@@ -24,6 +24,7 @@ class TokenType:
     AND = "AND"
     OR = "OR"
     NOT = "NOT"
+    EXISTS = "EXISTS"
 
     PLUS = "PLUS"
     MINUS = "MINUS"
@@ -40,6 +41,7 @@ class TokenType:
     RIGHT_PAREN = "RIGHT_PAREN"
     LEFT_BRACKET = "LEFT_BRACKET"
     RIGHT_BRACKET = "RIGHT_BRACKET"
+    DOT = "DOT"
     COMMA = "COMMA"
     COLON = "COLON"
     NEWLINE = "NEWLINE"
@@ -60,6 +62,7 @@ KEYWORDS = {
     "and": TokenType.AND,
     "or": TokenType.OR,
     "not": TokenType.NOT,
+    "exists": TokenType.EXISTS,
 }
 
 
@@ -230,7 +233,7 @@ class Lexer:
             raise SproutSyntaxError(
                 line_number,
                 index + 1,
-                "Underscore digit separators are not supported in Sprout v0.1.",
+                "Underscore digit separators are not supported in Sprout v0.3.",
                 "Write the digits without underscores.",
                 found="_",
                 expected="digits without separators",
@@ -239,7 +242,7 @@ class Lexer:
             raise SproutSyntaxError(
                 line_number,
                 index + 1,
-                "Scientific notation is not supported in Sprout v0.1.",
+                "Scientific notation is not supported in Sprout v0.3.",
                 "Write the full number instead.",
                 found=line[index],
                 expected="ordinary decimal digits",
@@ -350,6 +353,7 @@ class Lexer:
             ")": TokenType.RIGHT_PAREN,
             "[": TokenType.LEFT_BRACKET,
             "]": TokenType.RIGHT_BRACKET,
+            ".": TokenType.DOT,
             ",": TokenType.COMMA,
             ":": TokenType.COLON,
         }
@@ -365,4 +369,3 @@ class Lexer:
             )
         self.tokens.append(Token(one_char_tokens[char], char, char, line_number, column))
         return index + 1
-

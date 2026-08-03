@@ -40,6 +40,49 @@ class InterpreterTests(unittest.TestCase):
             "false\nfalse\ntrue\ntrue\ntrue\nfalse\n",
         )
 
+    def test_exists_is_sugar_for_not_equal_nothing(self):
+        self.assertEqual(
+            run_source(
+                "print(nothing exists)\n"
+                "print(0 exists)\n"
+                "print(false exists)\n"
+                'print("" exists)\n'
+                "print([] exists)\n"
+            ),
+            "false\ntrue\ntrue\ntrue\ntrue\n",
+        )
+
+    def test_exists_worked_example(self):
+        self.assertEqual(
+            run_source(
+                "winner = nothing\n"
+                "\n"
+                "if winner exists:\n"
+                '    print("Winner:", winner)\n'
+                "else:\n"
+                '    print("No winner yet")\n'
+            ),
+            "No winner yet\n",
+        )
+
+    def test_exists_still_raises_undefined_variable(self):
+        with_exists = self.error_message('if winnner exists:\n    print("won")\n')
+        plain_name = self.error_message('if winnner:\n    print("won")\n')
+        self.assertEqual(with_exists, plain_name)
+        self.assertIn("`winnner` is not defined.", with_exists)
+
+    def test_exists_precedence_with_and(self):
+        self.assertEqual(
+            run_source(
+                "winner = 0\n"
+                "score = 1\n"
+                "\n"
+                "if winner exists and score > 0:\n"
+                '    print("ready")\n'
+            ),
+            "ready\n",
+        )
+
     def test_list_ordering_is_rejected(self):
         message = self.error_message("print([1, 2] < [1, 3])")
         self.assertIn("Lists can only be compared with `==` or `!=`", message)

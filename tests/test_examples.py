@@ -16,6 +16,8 @@ EXAMPLES = {
     "lists.spr": "pizza\napple\nbread\n3\n",
     "functions.spr": "Sum: 5\n",
     "classify.spr": "95 -> A\n82 -> B\n61 -> C\n",
+    "exists.spr": "No winner yet\n",
+    "world.spr": "",
 }
 
 
@@ -41,4 +43,3 @@ class ExampleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

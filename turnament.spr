@@ -1,0 +1,35 @@
+func classify(score):
+    if score >= 90:
+        return "Elite"
+    else if score >= 70:
+        return "Good"
+    else if score >= 50:
+        return "Average"
+    else:
+        return "Low"
+
+func passed(score):
+    if score >= 50:
+        return true
+    else:
+        return false
+
+scores = [95, 72, 58, 31]
+
+total = 0
+passed_count = 0
+
+for score in scores:
+    print("Score", score, "->", classify(score))
+    total = total + score
+
+    if passed(score):
+        passed_count = passed_count + 1
+
+average = total / length(scores)
+
+print("")
+print("Players:", length(scores))
+print("Passed:", passed_count)
+print("Total:", total)
+print("Average:", average)

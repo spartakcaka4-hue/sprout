@@ -1,0 +1,11 @@
+winner = nothing
+
+if winner exists:
+    print("Winner:", winner)
+else:
+    print("No winner yet")
+repeat 5 as i:
+    print(i)
+    if i == 3:
+        winner = "Player 1"
+    else if

@@ -1,6 +1,6 @@
 # Design Decisions
 
-Each entry records the current v0.1 decision, why it was made, alternatives
+Each entry records a current language decision, why it was made, alternatives
 considered, why those alternatives were rejected for now, and consequences.
 
 ## Name And Extension
@@ -87,7 +87,7 @@ readable.
 
 ## Two-Scope Model
 
-Decision: Sprout v0.1 has global scope and one local scope per function call.
+Decision: Sprout has global scope and one local scope per function call.
 Blocks do not create scopes. Functions cannot mutate globals, and nested
 functions are not supported.
 
@@ -97,7 +97,7 @@ or a `global` keyword.
 Alternatives considered: block scope, nested function scopes, and a global
 mutation keyword.
 
-Why rejected: each adds rules that v0.1 does not need.
+Why rejected: each adds rules that the current language does not need.
 
 Consequences: a function can read globals but local assignment never leaks
 out or mutates global state.
@@ -131,7 +131,7 @@ Consequences: some valid-looking code is rejected until aligned exactly.
 
 ## Deliberately Omitted Syntax
 
-Decision: v0.1 has no semicolons, chained comparisons, truthy values, type
+Decision: Sprout has no semicolons, chained comparisons, truthy values, type
 annotations, int/float split, list mutation, block comments, or `global`
 keyword.
 
@@ -139,7 +139,7 @@ Reason: each omission keeps the first version smaller and more explainable.
 
 Alternatives considered: adding each feature now.
 
-Why rejected: none is required by the v0.1 examples, and each adds extra
+Why rejected: none is required by the current examples, and each adds extra
 rules.
 
 Consequences: users get clear errors or future-proposal notes instead of
@@ -164,7 +164,7 @@ Consequences: `+` stays strict; error messages suggest comma-separated
 
 Decision: implement Number as Python `float`.
 
-Reason: it is simple, familiar, and enough for v0.1.
+Reason: it is simple, familiar, and enough for the current language.
 
 Alternatives considered: `Decimal`.
 
@@ -215,7 +215,7 @@ Alternatives considered: Python object identity or lexicographic list
 ordering.
 
 Why rejected: identity would make equal-looking lists compare false; ordering
-would add rules not needed in v0.1.
+would add rules not needed in the current language.
 
 Consequences: `[1, [2]] == [1, [2]]` is `true`, but `[1] < [2]` errors.
 
@@ -261,7 +261,7 @@ Consequences: error snapshots pin the message for this case.
 
 ## Number-Only Ordering
 
-Decision: `<`, `>`, `<=`, and `>=` work with Numbers only in v0.1.
+Decision: `<`, `>`, `<=`, and `>=` work with Numbers only.
 
 Reason: numeric ordering is needed by examples; Text ordering raises questions
 about case, locale, and character ordering.
@@ -269,7 +269,7 @@ about case, locale, and character ordering.
 Alternatives considered: lexicographic Text ordering and Boolean ordering.
 
 Why rejected: both add behavior that is easy to misread and not needed for
-v0.1.
+the current language.
 
 Consequences: `"a" < "b"` is a runtime error for now.
 
@@ -283,7 +283,7 @@ Reason: Sprout exposes one Number type, so `2.0` should work like `2`, while
 Alternatives considered: separate integer type, rounding, floor conversion,
 or accepting negative indexes.
 
-Why rejected: each adds a rule or feature outside v0.1.
+Why rejected: each adds a rule or feature outside the current language.
 
 Consequences: `items[0]` and `items[2.0]` are valid; `items[2.5]` and
 `items[-1]` error.
@@ -329,7 +329,7 @@ Consequences: users choose different names and built-ins remain reliable.
 ## Functions Are Not Values
 
 Decision: functions can be called by name but are not ordinary values in
-v0.1.
+the current language.
 
 Reason: the specified value set is Number, Text, Boolean, List, and `nothing`.
 First-class functions would be an unplanned fifth kind of value.
@@ -343,14 +343,282 @@ Consequences: code such as `copy = add` or `print(print)` is a runtime error.
 
 ## No Text Indexing
 
-Decision: indexing works on Lists only in v0.1.
+Decision: indexing works on Lists only.
 
 Reason: List indexing is needed for examples; Text indexing raises questions
 about characters, escapes, and future Unicode behavior.
 
 Alternatives considered: allowing `"abc"[0]`.
 
-Why rejected: it is useful but not necessary for v0.1.
+Why rejected: it is useful but not necessary for the current language.
 
 Consequences: use `length(text)` for Text length; direct Text indexing errors.
 
+## `exists` As Sugar
+
+Decision: add postfix `exists` as exact sugar for `!= nothing`.
+
+Reason: `winner exists` reads naturally while keeping Sprout's Boolean and
+equality rules unchanged.
+
+Alternatives considered: a dedicated "is defined" check that would catch
+undefined-variable lookup errors and return `false`.
+
+Why rejected: swallowing lookup errors would hide typos, which conflicts with
+Sprout's explicit-over-implicit principle.
+
+Consequences: `exists` is technically redundant with `!= nothing` by design.
+That redundancy is intentional: it improves readability without adding
+truthiness or a new runtime concept.
+
+## Tick Controls Before Simulation
+
+Decision: v0.3 keeps tick controls independent from worlds, agent behavior,
+and movement logic.
+
+Reason: time control is a foundation for future simulation work, and it can be
+tested independently.
+
+Alternatives considered: adding ticks only after movement or world logic
+exists.
+
+Why rejected: coupling tick control to the first movement implementation would
+make the timing API harder to validate in isolation.
+
+Consequences: `tick.number`, manual ticking, automatic ticking, pause, resume,
+stop, and breakpoints exist now. A complete v0.3 tick only advances the tick
+counter.
+
+## One Shared Tick Execution Path
+
+Decision: manual ticks and automatic ticks call the same internal
+one-complete-tick path.
+
+Reason: future behavior should not drift depending on whether time advances
+manually or automatically.
+
+Alternatives considered: separate implementations for `tick.next(...)` and
+the automatic loop.
+
+Why rejected: separate paths would be easier to accidentally change
+independently.
+
+Consequences: adding future simulation work should happen in one place.
+
+## Manual Ticks Ignore Breakpoints
+
+Decision: v0.3 breakpoints pause automatic ticking but do not stop manual
+`tick.next(...)`.
+
+Reason: manual ticks are explicit user requests for an exact number of ticks.
+
+Alternatives considered: applying breakpoints to both manual and automatic
+ticks.
+
+Why rejected: stopping manual ticks early would make `tick.next(10)` less
+literal and harder to test.
+
+Consequences: breakpoints are automatic-loop controls in v0.3.
+
+## Agent Presets As Metadata
+
+Decision: v0.3 agent presets inject fields and store metadata only. They do
+not implement behavior.
+
+Reason: presets remove boilerplate while keeping the first agent system small
+and inspectable.
+
+Alternatives considered: implementing movement, biology, or lifecycle behavior
+inside presets immediately.
+
+Why rejected: hidden behavior would make the first preset system too large and
+harder to reason about.
+
+Consequences: `agent Blob uses:` can declare useful structure, but no Blob
+exists at runtime until a future spawning system is added.
+
+## Preset Registry
+
+Decision: built-in agent presets live in a registry-like data structure.
+
+Reason: future categories and presets should be added by extending data, not
+by growing parser or interpreter condition chains.
+
+Alternatives considered: hardcoding each preset in parser or interpreter
+branches.
+
+Why rejected: that would mix syntax, validation, and preset content.
+
+Consequences: categories such as `position`, `movement`, and `biology` are
+easy to expand.
+
+## One Preset Per Category
+
+Decision: an agent may select only one preset from each category.
+
+Reason: two presets from the same category can inject conflicting fields or
+represent incompatible models.
+
+Alternatives considered: allowing multiple presets and trying to merge them.
+
+Why rejected: merge rules would require extra precedence and conflict rules.
+
+Consequences: `position.basic` plus `position.cell` is a clear runtime error.
+
+## Environments As Metadata
+
+Decision: v0.3 has named environments with a simple `type` field, but no
+world generation or rendering.
+
+Reason: movement compatibility needs something to validate against before real
+worlds exist.
+
+Alternatives considered: waiting for a full world model before adding
+environment declarations.
+
+Why rejected: placement compatibility can be designed and tested as metadata
+first.
+
+Consequences: `environment Land: type = ground` stores metadata only.
+
+## Placement Validates Compatibility But Does Not Spawn
+
+Decision: `place Agent in Environment` validates declarations and movement
+compatibility, then stores placement metadata without creating live instances.
+
+Reason: placement compatibility is useful now, while spawning belongs to a
+later runtime system.
+
+Alternatives considered: making `place` create an agent instance immediately.
+
+Why rejected: live instances require lifecycle, identity, storage, and future
+mutation rules that v0.3 has not defined.
+
+Consequences: duplicate placement declarations are allowed as separate
+metadata records. They do not create duplicate live agents yet.
+
+## `movement.none` Placement
+
+Decision: `movement.none` may be placed in any supported environment as
+stationary metadata, with active movement set to false.
+
+Reason: stationary objects still need to be associated with environments.
+
+Alternatives considered: rejecting all placements for `movement.none`.
+
+Why rejected: that would make immobile agents impossible to place even as
+metadata.
+
+Consequences: compatibility validation distinguishes placement from active
+movement.
+
+## `movement.passive`
+
+Decision: `movement.passive` may be placed in any supported environment, with
+active movement set to false.
+
+Reason: passive movement means the agent cannot initiate movement itself, not
+that it cannot ever be moved by future external forces.
+
+Alternatives considered: treating passive movement the same as no movement.
+
+Why rejected: passive movement carries a different future meaning for wind,
+currents, conveyors, or other agents.
+
+Consequences: v0.3 stores the distinction in preset metadata but implements no
+external forces.
+
+## Worlds As Metadata
+
+Decision: v0.3 worlds define bounded 2D metadata only.
+
+Reason: placement and compatibility rules need a named space before real world
+simulation, rendering, or terrain exists.
+
+Alternatives considered: waiting for full world generation and rendering
+before adding `world`.
+
+Why rejected: world shape, bounds, and default environment can be designed and
+tested independently.
+
+Consequences: `world Meadow:` stores width, height, space type, and default
+environment metadata, but no live scene is created.
+
+## One Default Environment Per World
+
+Decision: each v0.3 world has exactly one default environment.
+
+Reason: this is enough to validate movement/environment compatibility while
+keeping the first world system small.
+
+Alternatives considered: supporting multiple regions, overlapping
+environments, or region maps immediately.
+
+Why rejected: those features require region syntax, lookup rules, and future
+movement/runtime behavior.
+
+Consequences: `environment = Land` is required, and multi-environment worlds
+are deferred.
+
+## Grid And Continuous Space
+
+Decision: worlds choose either `grid` or `continuous` space.
+
+Reason: these are the two basic coordinate models needed by current position
+presets.
+
+Alternatives considered: adding more space types such as hex, tile maps, or
+unbounded space.
+
+Why rejected: each would need more coordinate and compatibility rules.
+
+Consequences: `space = grid` requires whole placement coordinates, while
+`space = continuous` permits decimal coordinates.
+
+## Bounded Coordinates
+
+Decision: world placement coordinates must be inside `0 <= x < width` and
+`0 <= y < height`.
+
+Reason: bounded worlds need a clear half-open coordinate rule.
+
+Alternatives considered: inclusive maximum bounds or automatic clamping.
+
+Why rejected: inclusive maximum bounds would make `width` itself a valid x
+coordinate, and clamping would hide errors.
+
+Consequences: placing at `x = width` or `y = height` is a runtime error.
+
+## Position Preset Compatibility
+
+Decision: world placement validates position presets against world space.
+
+Reason: `position.cell` and `position.continuous` represent different
+coordinate models.
+
+Alternatives considered: converting between cell and continuous coordinates
+automatically.
+
+Why rejected: conversion rules would be movement or spawning behavior, which
+is outside v0.3.
+
+Consequences: `position.cell` is grid-only, `position.continuous` is
+continuous-only, `position.basic` works in both, and `position.none` works in
+both as metadata.
+
+## Separate World Placement Metadata
+
+Decision: environment placements remain in `Interpreter.placements`, while
+world placements are stored separately.
+
+Reason: the two placement forms store different data. Environment placement
+has no coordinates; world placement has coordinates, world space, and default
+environment metadata.
+
+Alternatives considered: one combined placement record with many optional
+fields.
+
+Why rejected: optional fields would make future runtime code harder to read.
+
+Consequences: `place Blob in Land` and `place Blob in Meadow at 20, 35` are
+preserved as distinct metadata paths.

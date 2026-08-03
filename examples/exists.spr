@@ -1,0 +1,6 @@
+winner = nothing
+
+if winner exists:
+    print("Winner:", winner)
+else:
+    print("No winner yet")

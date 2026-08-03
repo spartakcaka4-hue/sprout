@@ -1,6 +1,6 @@
 import unittest
 
-from sprout.ast_nodes import FunctionDef, IfStatement, RepeatStatement
+from sprout.ast_nodes import Binary, FunctionDef, IfStatement, Literal, RepeatStatement
 from sprout.errors import SproutSyntaxError
 from sprout.lexer import Lexer
 from sprout.parser import Parser
@@ -36,6 +36,15 @@ class ParserTests(unittest.TestCase):
         self.assertIsInstance(statement, RepeatStatement)
         self.assertEqual(statement.counter_name, "i")
 
+    def test_desugars_exists_to_not_equal_nothing(self):
+        program = parse("answer = winner exists\n")
+        expression = program.statements[0].value
+        self.assertIsInstance(expression, Binary)
+        self.assertEqual(expression.operator_type, "BANG_EQUAL")
+        self.assertEqual(expression.operator_lexeme, "!=")
+        self.assertIsInstance(expression.right, Literal)
+        self.assertEqual(expression.right.literal_type, "nothing")
+
     def test_parses_top_level_function_definition(self):
         program = parse("func add(a, b):\n    return a + b\n")
         statement = program.statements[0]
@@ -47,6 +56,10 @@ class ParserTests(unittest.TestCase):
         message = self.syntax_error("print(1 < x < 10)")
         self.assertIn("Chained comparisons", message)
         self.assertIn("1 < x and x < 10", message)
+
+    def test_rejects_chaining_after_exists(self):
+        message = self.syntax_error("print(winner exists == true)")
+        self.assertIn("Chained comparisons", message)
 
     def test_rejects_return_outside_function(self):
         message = self.syntax_error("return 5")

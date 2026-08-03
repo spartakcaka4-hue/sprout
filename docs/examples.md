@@ -1,7 +1,9 @@
 # Examples
 
-Each program below is available in `examples/` and is covered by automated
-tests.
+The first programs below are available in `examples/` and are covered by
+automated tests. The v0.3 snippets show metadata and tick-control syntax; they
+do not demonstrate simulation behavior because v0.3 does not include live
+agents, live world simulation, or movement calculations yet.
 
 ## hello_world.spr
 
@@ -109,3 +111,110 @@ Output:
 61 -> C
 ```
 
+## exists.spr
+
+```text
+winner = nothing
+
+if winner exists:
+    print("Winner:", winner)
+else:
+    print("No winner yet")
+```
+
+Output:
+
+```text
+No winner yet
+```
+
+## world.spr
+
+```text
+environment Land:
+    type = ground
+
+agent Blob uses:
+    position.continuous
+    movement.ground
+    biology.energy
+
+world Meadow:
+    size = 100, 80
+    space = continuous
+    environment = Land
+
+place Blob in Meadow at 20, 35
+```
+
+Output: no output.
+
+This example declares environment, agent, world, and world-placement metadata.
+It does not spawn or render a Blob.
+
+## v0.3 Tick Snippet
+
+```text
+tick.next(3)
+print(tick.number)
+```
+
+Output:
+
+```text
+3
+```
+
+## v0.3 Agent Preset Snippet
+
+```text
+agent Blob uses:
+    position.continuous
+    movement.ground
+    biology.energy
+
+    hunger = 5
+    vision = 10
+```
+
+This declares agent metadata. It injects fields from the selected presets and
+adds the custom `hunger` and `vision` fields. It does not spawn a Blob.
+
+## v0.3 Environment Placement Snippet
+
+```text
+agent Fish uses:
+    position.continuous
+    movement.water
+    biology.energy
+
+environment Lake:
+    type = water
+
+place Fish in Lake
+```
+
+This stores placement metadata after validating that `movement.water` is
+allowed in a `water` environment.
+
+## v0.3 World Placement Snippet
+
+```text
+environment Ground:
+    type = ground
+
+agent Ant uses:
+    position.cell
+    movement.grid
+
+world Board:
+    size = 20, 20
+    space = grid
+    environment = Ground
+
+place Ant in Board at 4, 7
+```
+
+This stores world-placement metadata after validating the agent, world,
+coordinates, movement/environment compatibility, and position/grid
+compatibility.

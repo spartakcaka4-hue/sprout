@@ -77,6 +77,91 @@ class ReturnStatement(Statement):
 
 
 @dataclass(frozen=True)
+class AgentPresetSelection:
+    category: str
+    preset: str
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class AgentFieldDeclaration:
+    name: str
+    value: Expression
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class AgentDeclaration(Statement):
+    name: str
+    uses_presets: bool
+    presets: list[AgentPresetSelection]
+    fields: list[AgentFieldDeclaration]
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class EnvironmentDeclaration(Statement):
+    name: str
+    environment_type: str
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class PlacementDeclaration(Statement):
+    agent_name: str
+    environment_name: str
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class WorldDeclaration(Statement):
+    name: str
+    width: Expression
+    height: Expression
+    space_type: str
+    environment_name: str
+    line: int
+    column: int
+    size_line: int
+    size_column: int
+    space_line: int
+    space_column: int
+    environment_line: int
+    environment_column: int
+
+
+@dataclass(frozen=True)
+class WorldPlacementDeclaration(Statement):
+    agent_name: str
+    world_name: str
+    x: Expression
+    y: Expression
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class TickStatement(Statement):
+    action: str
+    argument: Expression | None
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class TickBreakStatement(Statement):
+    kind: str
+    condition: Expression
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
 class Literal(Expression):
     value: Any
     literal_type: str
@@ -87,6 +172,12 @@ class Literal(Expression):
 @dataclass(frozen=True)
 class Variable(Expression):
     name: str
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class TickNumber(Expression):
     line: int
     column: int
 
@@ -131,4 +222,3 @@ class Index(Expression):
     index: Expression
     line: int
     column: int
-

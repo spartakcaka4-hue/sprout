@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from .ast_nodes import (
+    AgentDeclaration,
+    AgentFieldDeclaration,
+    AgentPresetSelection,
     Assignment,
     Binary,
     Call,
+    EnvironmentDeclaration,
     Expression,
     ExpressionStatement,
     ForStatement,
@@ -12,12 +16,18 @@ from .ast_nodes import (
     Index,
     ListLiteral,
     Literal,
+    PlacementDeclaration,
     Program,
     RepeatStatement,
     ReturnStatement,
     Statement,
+    TickBreakStatement,
+    TickNumber,
+    TickStatement,
     Unary,
     Variable,
+    WorldDeclaration,
+    WorldPlacementDeclaration,
 )
 from .errors import SproutSyntaxError
 from .lexer import Token, TokenType
@@ -59,6 +69,16 @@ class Parser:
         return Program(statements)
 
     def _statement(self) -> Statement:
+        if self._is_environment_statement_start():
+            return self._environment_declaration()
+        if self._is_world_statement_start():
+            return self._world_declaration()
+        if self._is_place_statement_start():
+            return self._placement_declaration()
+        if self._is_agent_statement_start():
+            return self._agent_declaration()
+        if self._is_tick_statement_start():
+            return self._tick_statement()
         if self._match(TokenType.IF):
             return self._if_statement(self._previous())
         if self._match(TokenType.REPEAT):
@@ -103,7 +123,7 @@ class Parser:
                 raise SproutSyntaxError(
                     token.line,
                     token.column,
-                    "List item assignment is not supported in Sprout v0.1.",
+                    "List item assignment is not supported in Sprout v0.3.",
                     "Create a new list value instead.",
                 )
             raise SproutSyntaxError(
@@ -200,6 +220,319 @@ class Parser:
         self._consume_statement_end()
         return ReturnStatement(value, return_token.line, return_token.column)
 
+    def _environment_declaration(self) -> EnvironmentDeclaration:
+        environment_token = self._advance()
+        if self.block_depth != 0:
+            raise SproutSyntaxError(
+                environment_token.line,
+                environment_token.column,
+                "Environment declarations are only allowed at the top level.",
+                "Move this `environment` declaration out of the block.",
+            )
+
+        name = self._consume(TokenType.IDENTIFIER, "Expected an environment name after `environment`.")
+        self._check_name_is_assignable(name)
+        environment_type = self._environment_body()
+        return EnvironmentDeclaration(name.lexeme, environment_type, environment_token.line, environment_token.column)
+
+    def _environment_body(self) -> str:
+        self._consume_colon_after_header("environment")
+        if not self._match(TokenType.NEWLINE):
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Expected a new line after `:`.",
+                "Put the environment type on the next line and indent it by 4 spaces.",
+            )
+        if not self._match(TokenType.INDENT):
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Expected an indented block after `environment`.",
+                "Write a type field like `type = ground` inside the environment block.",
+            )
+
+        environment_type: str | None = None
+        self.block_depth += 1
+        try:
+            while not self._check(TokenType.DEDENT) and not self._check(TokenType.EOF):
+                if self._match(TokenType.NEWLINE):
+                    continue
+                name = self._consume(TokenType.IDENTIFIER, "Expected `type = ground`, `type = water`, or `type = air`.")
+                if name.lexeme != "type":
+                    raise SproutSyntaxError(
+                        name.line,
+                        name.column,
+                        "Environment declarations only support a `type` field.",
+                        "Use `type = ground`, `type = water`, or `type = air`.",
+                    )
+                if environment_type is not None:
+                    raise SproutSyntaxError(
+                        name.line,
+                        name.column,
+                        "Environment declarations can only set `type` once.",
+                    )
+                self._consume(TokenType.EQUAL, "Expected `=` after `type`.")
+                value = self._consume(TokenType.IDENTIFIER, "Expected an environment type name after `type =`.")
+                environment_type = value.lexeme
+                self._consume_statement_end()
+        finally:
+            self.block_depth -= 1
+
+        if environment_type is None:
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Environment declarations need a type.",
+                "Use `type = ground`, `type = water`, or `type = air`.",
+            )
+        self._consume(TokenType.DEDENT, "Expected the environment block to end with a matching dedent.")
+        return environment_type
+
+    def _world_declaration(self) -> WorldDeclaration:
+        world_token = self._advance()
+        if self.block_depth != 0:
+            raise SproutSyntaxError(
+                world_token.line,
+                world_token.column,
+                "World declarations are only allowed at the top level.",
+                "Move this `world` declaration out of the block.",
+            )
+
+        name = self._consume(TokenType.IDENTIFIER, "Expected a world name after `world`.")
+        self._check_name_is_assignable(name)
+        fields = self._world_body()
+        size_width, size_height, size_token = fields["size"]
+        space_type, space_token = fields["space"]
+        environment_name, environment_token = fields["environment"]
+        return WorldDeclaration(
+            name.lexeme,
+            size_width,
+            size_height,
+            space_type,
+            environment_name,
+            world_token.line,
+            world_token.column,
+            size_token.line,
+            size_token.column,
+            space_token.line,
+            space_token.column,
+            environment_token.line,
+            environment_token.column,
+        )
+
+    def _world_body(self) -> dict[str, object]:
+        self._consume_colon_after_header("world")
+        if not self._match(TokenType.NEWLINE):
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Expected a new line after `:`.",
+                "Put the world metadata on the next line and indent it by 4 spaces.",
+            )
+        if not self._match(TokenType.INDENT):
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Expected an indented block after `world`.",
+                "Write `size`, `space`, and `environment` fields inside the world block.",
+            )
+
+        fields: dict[str, object] = {}
+        saw_item = False
+        self.block_depth += 1
+        try:
+            while not self._check(TokenType.DEDENT) and not self._check(TokenType.EOF):
+                if self._match(TokenType.NEWLINE):
+                    continue
+                saw_item = True
+                self._world_body_item(fields)
+        finally:
+            self.block_depth -= 1
+
+        if not saw_item:
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Empty world declarations are not supported in Sprout v0.3.",
+                "Add `size`, `space`, and `environment` fields.",
+            )
+
+        for field_name in ("size", "space", "environment"):
+            if field_name not in fields:
+                token = self._peek()
+                raise SproutSyntaxError(
+                    token.line,
+                    token.column,
+                    f"World declaration is missing `{field_name}`.",
+                )
+
+        self._consume(TokenType.DEDENT, "Expected the world block to end with a matching dedent.")
+        return fields
+
+    def _world_body_item(self, fields: dict[str, object]) -> None:
+        name = self._consume(TokenType.IDENTIFIER, "Expected a world field name.")
+        if name.lexeme not in ("size", "space", "environment"):
+            raise SproutSyntaxError(
+                name.line,
+                name.column,
+                f"Unknown world field `{name.lexeme}`.",
+                "World declarations only support `size`, `space`, and `environment`.",
+            )
+        if name.lexeme in fields:
+            raise SproutSyntaxError(
+                name.line,
+                name.column,
+                f"World declarations can only set `{name.lexeme}` once.",
+            )
+        self._consume(TokenType.EQUAL, f"Expected `=` after `{name.lexeme}`.")
+
+        if name.lexeme == "size":
+            width = self._expression()
+            self._consume(TokenType.COMMA, "Expected `,` between world width and height.")
+            height = self._expression()
+            self._consume_statement_end()
+            fields[name.lexeme] = (width, height, name)
+            return
+
+        if name.lexeme == "space":
+            value = self._consume(TokenType.IDENTIFIER, "Expected a world space type after `space =`.")
+            self._consume_statement_end()
+            fields[name.lexeme] = (value.lexeme, value)
+            return
+
+        if name.lexeme == "environment":
+            value = self._consume(TokenType.IDENTIFIER, "Expected an environment name after `environment =`.")
+            self._consume_statement_end()
+            fields[name.lexeme] = (value.lexeme, value)
+            return
+
+        raise AssertionError(f"Unhandled world field: {name.lexeme}")
+
+    def _placement_declaration(self) -> PlacementDeclaration | WorldPlacementDeclaration:
+        place = self._advance()
+        agent_name = self._consume(TokenType.IDENTIFIER, "Expected an agent name after `place`.")
+        self._consume(TokenType.IN, "Expected `in` after the agent name.")
+        target_name = self._consume(TokenType.IDENTIFIER, "Expected an environment or world name after `in`.")
+        if self._check(TokenType.IDENTIFIER) and self._peek().lexeme == "at":
+            self._advance()
+            x = self._expression()
+            self._consume(TokenType.COMMA, "Expected `,` between placement coordinates.")
+            y = self._expression()
+            self._consume_statement_end()
+            return WorldPlacementDeclaration(agent_name.lexeme, target_name.lexeme, x, y, place.line, place.column)
+        self._consume_statement_end()
+        return PlacementDeclaration(agent_name.lexeme, target_name.lexeme, place.line, place.column)
+
+    def _agent_declaration(self) -> AgentDeclaration:
+        agent_token = self._advance()
+        if self.block_depth != 0:
+            raise SproutSyntaxError(
+                agent_token.line,
+                agent_token.column,
+                "Agent declarations are only allowed at the top level.",
+                "Move this `agent` declaration out of the block.",
+            )
+
+        name = self._consume(TokenType.IDENTIFIER, "Expected an agent name after `agent`.")
+        self._check_name_is_assignable(name)
+
+        uses_presets = False
+        if self._check(TokenType.IDENTIFIER) and self._peek().lexeme == "uses":
+            self._advance()
+            uses_presets = True
+
+        presets, fields = self._agent_body(uses_presets)
+        return AgentDeclaration(name.lexeme, uses_presets, presets, fields, agent_token.line, agent_token.column)
+
+    def _agent_body(
+        self,
+        uses_presets: bool,
+    ) -> tuple[list[AgentPresetSelection], list[AgentFieldDeclaration]]:
+        self._consume_colon_after_header("agent")
+        if not self._match(TokenType.NEWLINE):
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Expected a new line after `:`.",
+                "Put the agent fields on the next line and indent them by 4 spaces.",
+            )
+        if not self._match(TokenType.INDENT):
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Expected an indented block after `agent`.",
+                "Indent the presets or fields that belong to this agent by 4 spaces.",
+            )
+
+        presets: list[AgentPresetSelection] = []
+        fields: list[AgentFieldDeclaration] = []
+        self.block_depth += 1
+        try:
+            while not self._check(TokenType.DEDENT) and not self._check(TokenType.EOF):
+                if self._match(TokenType.NEWLINE):
+                    continue
+                preset, field = self._agent_body_item(uses_presets)
+                if preset is not None:
+                    presets.append(preset)
+                if field is not None:
+                    fields.append(field)
+        finally:
+            self.block_depth -= 1
+
+        if not presets and not fields:
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Empty agent declarations are not supported in Sprout v0.3.",
+                "Add at least one preset or custom field.",
+            )
+        self._consume(TokenType.DEDENT, "Expected the agent block to end with a matching dedent.")
+        return presets, fields
+
+    def _agent_body_item(
+        self,
+        uses_presets: bool,
+    ) -> tuple[AgentPresetSelection | None, AgentFieldDeclaration | None]:
+        if self._check(TokenType.IDENTIFIER) and self._check_next(TokenType.DOT):
+            category = self._advance()
+            if not uses_presets:
+                raise SproutSyntaxError(
+                    category.line,
+                    category.column,
+                    "Agent presets require `uses` in the agent header.",
+                    "Write `agent Name uses:` when selecting built-in presets.",
+                )
+            self._advance()
+            preset = self._consume(TokenType.IDENTIFIER, "Expected a preset name after `.`.")
+            self._consume_statement_end()
+            return AgentPresetSelection(category.lexeme, preset.lexeme, category.line, category.column), None
+
+        if self._check(TokenType.IDENTIFIER) and self._check_next(TokenType.EQUAL):
+            name = self._advance()
+            self._check_name_is_assignable(name)
+            self._advance()
+            value = self._expression()
+            self._consume_statement_end()
+            return None, AgentFieldDeclaration(name.lexeme, value, name.line, name.column)
+
+        token = self._peek()
+        raise SproutSyntaxError(
+            token.line,
+            token.column,
+            "Agent declarations only support preset names and field assignments.",
+            "Use `position.basic` or a field like `energy = 5`.",
+        )
+
     def _block(self, header_kind: str, *, in_function: bool = False) -> list[Statement]:
         self._consume_colon_after_header(header_kind)
         if not self._match(TokenType.NEWLINE):
@@ -238,7 +571,7 @@ class Parser:
             raise SproutSyntaxError(
                 token.line,
                 token.column,
-                "Empty blocks are not supported in Sprout v0.1.",
+                "Empty blocks are not supported in Sprout v0.3.",
                 "Add at least one statement inside the block.",
             )
         self._consume(TokenType.DEDENT, "Expected the block to end with a matching dedent.")
@@ -283,10 +616,27 @@ class Parser:
 
     def _comparison(self) -> Expression:
         expression = self._term()
-        if self._match(*COMPARISON_TOKENS):
+        if self._match(TokenType.EXISTS):
+            operator = self._previous()
+            expression = Binary(
+                expression,
+                TokenType.BANG_EQUAL,
+                "!=",
+                Literal(None, "nothing", operator.line, operator.column),
+                operator.line,
+                operator.column,
+            )
+            if self._check(*COMPARISON_TOKENS, TokenType.EXISTS):
+                raise SproutSyntaxError(
+                    operator.line,
+                    operator.column,
+                    "Chained comparisons like `1 < x < 10` are not supported yet.",
+                    "Use `1 < x and x < 10` instead.",
+                )
+        elif self._match(*COMPARISON_TOKENS):
             operator = self._previous()
             right = self._term()
-            if self._check(*COMPARISON_TOKENS):
+            if self._check(*COMPARISON_TOKENS, TokenType.EXISTS):
                 raise SproutSyntaxError(
                     operator.line,
                     operator.column,
@@ -354,6 +704,11 @@ class Parser:
         if self._match(TokenType.NOTHING):
             token = self._previous()
             return Literal(None, "nothing", token.line, token.column)
+        if self._is_tick_number_expression():
+            tick = self._advance()
+            self._advance()
+            self._advance()
+            return TickNumber(tick.line, tick.column)
         if self._match(TokenType.IDENTIFIER):
             token = self._previous()
             return Variable(token.lexeme, token.line, token.column)
@@ -417,6 +772,85 @@ class Parser:
         token = self._peek()
         raise SproutSyntaxError(token.line, token.column, message)
 
+    def _tick_statement(self) -> Statement:
+        tick = self._consume_tick_name()
+        self._consume(TokenType.DOT, "Expected `.` after `tick`.")
+        member = self._consume(TokenType.IDENTIFIER, "Expected a tick command after `tick.`.")
+
+        if member.lexeme == "start":
+            self._consume(TokenType.LEFT_PAREN, "Expected `(` after `tick.start`.")
+            rate = self._expression()
+            self._consume(TokenType.RIGHT_PAREN, "Expected `)` after the tick rate.")
+            self._consume_statement_end()
+            return TickStatement("start", rate, tick.line, tick.column)
+
+        if member.lexeme == "next":
+            self._consume(TokenType.LEFT_PAREN, "Expected `(` after `tick.next`.")
+            count: Expression | None = None
+            if not self._check(TokenType.RIGHT_PAREN):
+                count = self._expression()
+            self._consume(TokenType.RIGHT_PAREN, "Expected `)` after the tick count.")
+            self._consume_statement_end()
+            return TickStatement("next", count, tick.line, tick.column)
+
+        if member.lexeme in ("pause", "resume", "stop"):
+            if self._check(TokenType.LEFT_PAREN):
+                raise SproutSyntaxError(
+                    member.line,
+                    member.column,
+                    f"`tick.{member.lexeme}` does not take parentheses.",
+                    f"Write `tick.{member.lexeme}` on its own line.",
+                )
+            self._consume_statement_end()
+            return TickStatement(member.lexeme, None, tick.line, tick.column)
+
+        if member.lexeme == "break":
+            return self._tick_break_statement(tick)
+
+        if member.lexeme == "number":
+            raise SproutSyntaxError(
+                member.line,
+                member.column,
+                "`tick.number` can only be read as an expression.",
+                "Use it in a call like `print(tick.number)`.",
+            )
+
+        raise SproutSyntaxError(
+            member.line,
+            member.column,
+            f"Unknown tick command `tick.{member.lexeme}`.",
+            "Use `tick.start(rate)`, `tick.pause`, `tick.resume`, `tick.next(...)`, `tick.stop`, or `tick.break ...`.",
+        )
+
+    def _tick_break_statement(self, tick: Token) -> TickBreakStatement:
+        if not self._check(TokenType.IDENTIFIER):
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Malformed tick breakpoint.",
+                "Use `tick.break at N` or `tick.break when condition`.",
+            )
+
+        kind = self._advance()
+        if kind.lexeme not in ("at", "when"):
+            raise SproutSyntaxError(
+                kind.line,
+                kind.column,
+                "Malformed tick breakpoint.",
+                "Use `tick.break at N` or `tick.break when condition`.",
+            )
+        if self._check(TokenType.NEWLINE, TokenType.DEDENT, TokenType.EOF):
+            raise SproutSyntaxError(
+                kind.line,
+                kind.column,
+                f"Expected an expression after `tick.break {kind.lexeme}`.",
+            )
+
+        condition = self._expression()
+        self._consume_statement_end()
+        return TickBreakStatement(kind.lexeme, condition, tick.line, tick.column)
+
     def _match(self, *types: str) -> bool:
         if self._check(*types):
             self._advance()
@@ -432,6 +866,58 @@ class Parser:
         if self.current + 1 >= len(self.tokens):
             return False
         return self.tokens[self.current + 1].type == token_type
+
+    def _is_environment_statement_start(self) -> bool:
+        if not self._check(TokenType.IDENTIFIER):
+            return False
+        if self._peek().lexeme != "environment":
+            return False
+        return self._check_next(TokenType.IDENTIFIER)
+
+    def _is_world_statement_start(self) -> bool:
+        if not self._check(TokenType.IDENTIFIER):
+            return False
+        if self._peek().lexeme != "world":
+            return False
+        return self._check_next(TokenType.IDENTIFIER)
+
+    def _is_place_statement_start(self) -> bool:
+        if not self._check(TokenType.IDENTIFIER):
+            return False
+        if self._peek().lexeme != "place":
+            return False
+        return self._check_next(TokenType.IDENTIFIER)
+
+    def _is_agent_statement_start(self) -> bool:
+        if not self._check(TokenType.IDENTIFIER):
+            return False
+        if self._peek().lexeme != "agent":
+            return False
+        return self._check_next(TokenType.IDENTIFIER)
+
+    def _is_tick_statement_start(self) -> bool:
+        if not self._check(TokenType.IDENTIFIER):
+            return False
+        if self._peek().lexeme != "tick":
+            return False
+        return self._check_next(TokenType.DOT)
+
+    def _is_tick_number_expression(self) -> bool:
+        if self.current + 2 >= len(self.tokens):
+            return False
+        return (
+            self.tokens[self.current].type == TokenType.IDENTIFIER
+            and self.tokens[self.current].lexeme == "tick"
+            and self.tokens[self.current + 1].type == TokenType.DOT
+            and self.tokens[self.current + 2].type == TokenType.IDENTIFIER
+            and self.tokens[self.current + 2].lexeme == "number"
+        )
+
+    def _consume_tick_name(self) -> Token:
+        token = self._consume(TokenType.IDENTIFIER, "Expected `tick`.")
+        if token.lexeme != "tick":
+            raise SproutSyntaxError(token.line, token.column, "Expected `tick`.")
+        return token
 
     def _advance(self) -> Token:
         if not self._is_at_end():

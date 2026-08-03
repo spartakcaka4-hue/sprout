@@ -19,6 +19,7 @@ class LexerTests(unittest.TestCase):
             "score = 10.5\n"
             "flag = true and not false\n"
             "missing = nothing\n"
+            "present = missing exists\n"
             "items = [1, 2]\n"
         )
         self.assertEqual(
@@ -39,6 +40,10 @@ class LexerTests(unittest.TestCase):
                 TokenType.IDENTIFIER,
                 TokenType.EQUAL,
                 TokenType.NOTHING,
+                TokenType.IDENTIFIER,
+                TokenType.EQUAL,
+                TokenType.IDENTIFIER,
+                TokenType.EXISTS,
                 TokenType.IDENTIFIER,
                 TokenType.EQUAL,
                 TokenType.LEFT_BRACKET,
@@ -115,4 +120,3 @@ class LexerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

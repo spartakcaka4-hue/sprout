@@ -16,6 +16,7 @@ CASES = {
     "wrong_argument_count": "func add(a, b):\n    return a + b\n\nadd(1)",
     "index_out_of_range": "items = [1, 2]\nprint(items[5])",
     "chained_comparison": "print(1 < 2 < 3)",
+    "undefined_variable_exists": 'if winnner exists:\n    print("won")\n',
     "tab_indentation": 'if true:\n\tprint("x")',
     "missing_block": 'if true:\nprint("x")',
 }
@@ -33,4 +34,3 @@ class ErrorSnapshotTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

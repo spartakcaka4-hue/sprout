@@ -1,0 +1,14 @@
+environment Land:
+    type = ground
+
+agent Blob uses:
+    position.continuous
+    movement.ground
+    biology.energy
+
+world Meadow:
+    size = 100, 80
+    space = continuous
+    environment = Land
+
+place Blob in Meadow at 20, 35
