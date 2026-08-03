@@ -10,6 +10,10 @@ Line <n>, column <n>:
 
 Suggestions appear only when there is a clear likely fix.
 
+Command-line usage errors, such as a missing file path or a missing file, are
+reported by the `sprout` command without a Python traceback. Sprout syntax and
+runtime errors preserve the formatted messages shown below.
+
 ## Syntax Errors
 
 ### Missing Indented Block

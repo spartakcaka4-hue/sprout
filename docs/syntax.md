@@ -5,8 +5,11 @@ Sprout programs are plain text files with the `.spr` extension.
 Run one with:
 
 ```text
-python sprout.py path/to/program.spr
+sprout path/to/program.spr
 ```
+
+From a source checkout, `python sprout.py path/to/program.spr` is still
+supported.
 
 ## Values
 

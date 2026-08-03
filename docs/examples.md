@@ -5,6 +5,15 @@ automated tests. The v0.3 snippets show metadata and tick-control syntax; they
 do not demonstrate simulation behavior because v0.3 does not include live
 agents, live world simulation, or movement calculations yet.
 
+After local installation, run any example with:
+
+```text
+sprout examples/hello_world.spr
+```
+
+From a source checkout, `python sprout.py examples/hello_world.spr` is still
+supported.
+
 ## hello_world.spr
 
 ```text

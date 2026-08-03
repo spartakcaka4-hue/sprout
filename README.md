@@ -78,14 +78,30 @@ ideas can be explicit, readable, and low-boilerplate.
 
 ## Quick Start
 
-Sprout currently runs from source. No package installer is provided yet.
-
 Requirements:
 
 - Python 3.11 or newer is recommended
 - No third-party Python packages are required
 
-Run an example from the repository root:
+Install from a local checkout:
+
+```text
+python -m pip install .
+```
+
+Run a program:
+
+```text
+sprout path/to/program.spr
+```
+
+Run an example from the repository root after installation:
+
+```text
+sprout examples/hello_world.spr
+```
+
+Run directly from source without installing:
 
 ```text
 python sprout.py examples/hello_world.spr
@@ -94,17 +110,22 @@ python sprout.py examples/hello_world.spr
 Run the v0.3 world metadata example:
 
 ```text
-python sprout.py examples/world.spr
+sprout examples/world.spr
 ```
 
 That example succeeds silently because metadata declarations do not print
 anything unless the program calls `print`.
 
-Run your own file:
+## Development Installation
+
+Install in editable mode while working on Sprout:
 
 ```text
-python sprout.py path/to/program.spr
+python -m pip install -e .
 ```
+
+This installs the `sprout` command while keeping the package connected to the
+source checkout.
 
 ## Examples
 
@@ -169,7 +190,7 @@ Sprout does not currently implement:
 - World transitions
 - Mutation
 - Automatic agent updates during ticks
-- A package installer or command-line shell beyond `python sprout.py file.spr`
+- A published PyPI release
 - A VS Code extension
 
 ## Roadmap
@@ -182,7 +203,7 @@ Likely future areas:
 - Behavior syntax designed for simulation clarity
 - World regions or richer environment maps
 - Better editor support
-- Packaging and installation
+- PyPI publication
 
 The roadmap is intentionally tentative. Features should earn their place by
 making simulation code clearer or reducing repeated infrastructure.

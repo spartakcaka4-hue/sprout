@@ -622,3 +622,23 @@ Why rejected: optional fields would make future runtime code harder to read.
 
 Consequences: `place Blob in Land` and `place Blob in Meadow at 20, 35` are
 preserved as distinct metadata paths.
+
+## Installable Command Wrapper
+
+Decision: package Sprout with the distribution name `sprout-lang`, while
+keeping the import package named `sprout` and exposing the installed command
+`sprout`.
+
+Reason: users should be able to run `sprout program.spr` after installation
+without changing the language interpreter or its syntax.
+
+Alternatives considered: keeping only `python sprout.py program.spr`, or
+rewriting the launcher around a new execution path.
+
+Why rejected: source-only launching is awkward for users, and a rewrite would
+risk changing tested interpreter behavior.
+
+Consequences: the installed command and the legacy `python sprout.py` launcher
+call the same `sprout.cli:main` function. Packaging is now ready for local
+installation and distribution builds, but PyPI publication still requires a
+human release step and license decision.

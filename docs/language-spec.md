@@ -12,11 +12,17 @@ Sprout source files use the provisional `.spr` extension.
 Run a program with:
 
 ```text
-python sprout.py path/to/program.spr
+sprout path/to/program.spr
 ```
 
 Execution is top to bottom. A function definition creates the function only
 when execution reaches that `func` statement.
+
+From a source checkout, the compatibility launcher also supports:
+
+```text
+python sprout.py path/to/program.spr
+```
 
 ## Lexical Rules
 
@@ -1015,7 +1021,7 @@ The following are intentionally out of scope:
 - Text indexing
 - Block comments
 - Empty blocks and `pass`
-- A packaged `sprout` shell command
+- A published PyPI release
 - Live agent instances and spawning
 - Agent behaviors
 - Actual movement calculations

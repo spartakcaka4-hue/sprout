@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=77","wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sprout-lang"
+version = "0.3.0"
+description = "A small experimental programming language for agent-based and simulation-focused projects."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Joel", email = "jjole2227@gmail.com" },
+]
+keywords = ["programming-language", "interpreter", "simulation", "agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Interpreters",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/spartakcaka4-hue/sprout"
+Repository = "https://github.com/spartakcaka4-hue/sprout"
+Issues = "https://github.com/spartakcaka4-hue/sprout/issues"
+
+[project.scripts]
+sprout = "sprout.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sprout*"]
