@@ -1,0 +1,3 @@
+Line 1, column 9:
+Chained comparisons like `1 < x < 10` are not supported yet.
+Use `1 < x and x < 10` instead.

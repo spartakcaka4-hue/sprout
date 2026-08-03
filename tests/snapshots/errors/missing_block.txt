@@ -1,0 +1,3 @@
+Line 2, column 1:
+Expected an indented block after `if`.
+Indent the code that belongs in this block by 4 spaces.

@@ -1,0 +1,4 @@
+Line 1, column 17:
+Cannot combine text and number with `+`.
+Found: text + number.
+Use `print("Score:", 10)` to print text and a number together.

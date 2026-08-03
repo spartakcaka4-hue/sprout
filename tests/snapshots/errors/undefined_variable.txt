@@ -1,0 +1,3 @@
+Line 1, column 7:
+`total` is not defined.
+Check the spelling, or define it first with `total = ...`.

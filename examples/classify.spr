@@ -1,0 +1,12 @@
+func classify(score):
+    if score >= 90:
+        return "A"
+    else if score >= 80:
+        return "B"
+    else:
+        return "C"
+
+scores = [95, 82, 61]
+
+for s in scores:
+    print(s, "->", classify(s))

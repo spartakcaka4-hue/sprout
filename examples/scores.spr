@@ -1,0 +1,7 @@
+name = "Joel"
+score = 10
+
+if score >= 10:
+    print("You win")
+else:
+    print("Keep trying")

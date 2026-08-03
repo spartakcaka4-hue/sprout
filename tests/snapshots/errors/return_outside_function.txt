@@ -1,0 +1,2 @@
+Line 1, column 1:
+`return` can only be used inside a function.
