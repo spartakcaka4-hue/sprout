@@ -1,22 +1,19 @@
-# Sprout v0.3
+# Sprout v0.4
 
 Sprout is a small programming language designed to reduce boilerplate in
 agent-based and simulation-focused projects.
 
 It is implemented as a real lexer, parser, AST, and tree-walking interpreter
-in Python. Sprout is experimental and not production-ready. The current v0.3
-milestone focuses on clear syntax, metadata systems, and tick control rather
-than live simulation.
+in Python. Sprout is experimental and not production-ready. The current v0.4
+milestone turns agent/world metadata into executable runtime state.
 
 ## Overview
 
 Sprout is exploring what a beginner-friendly, simulation-oriented language can
 look like when common simulation concepts are part of the language surface.
-Instead of immediately writing infrastructure for agents, environments, worlds,
-and ticks, Sprout lets those concepts be declared directly.
-
-Sprout currently stores metadata and validates compatibility. It does not yet
-run agent behaviors, spawn live instances, render worlds, or execute movement.
+Instead of writing all infrastructure for agents, environments, worlds, and
+ticks by hand, Sprout lets those concepts be declared directly and then used
+by a small deterministic runtime.
 
 ## Example
 
@@ -24,30 +21,38 @@ run agent behaviors, spawn live instances, render worlds, or execute movement.
 environment Land:
     type = ground
 
-agent Blob uses:
-    position.continuous
+agent Banana uses:
+    position.cell
     movement.ground
     biology.energy
 
-world Meadow:
-    size = 100, 80
-    space = continuous
+    every tick:
+        energy = energy - 1
+        move self by 1, 0
+
+        if energy <= 0:
+            remove self
+
+world Kitchen:
+    size = 10, 10
+    space = grid
     environment = Land
 
-place Blob in Meadow at 20, 35
+spawn Banana as bob in Kitchen at 0, 4:
+    energy = 3
 
 tick.next(3)
-print(tick.number)
+print(bob exists)
 ```
 
 Output:
 
 ```text
-3
+false
 ```
 
-This declares metadata for an environment, agent, world, and placement, then
-advances the tick counter manually. It does not spawn or move a live Blob.
+This spawns a live Banana, runs three sequential ticks, moves it one cell per
+tick, and removes it when its energy reaches 0.
 
 ## Why Sprout Exists
 
@@ -75,6 +80,13 @@ ideas can be explicit, readable, and low-boilerplate.
 - Environment placement validation with `place Agent in Environment`
 - World metadata with bounded `grid` or `continuous` 2D space
 - World placement validation with `place Agent in World at x, y`
+- Live agent instances with `spawn Agent [as name] in World at x, y`
+- Spawn-time field overrides with validation
+- `every tick:` behavior blocks
+- Sequential spawn-order tick updates
+- Runtime movement with `move ... by` and `move ... to`
+- Runtime removal with `remove`
+- Dotted instance field reads such as `bob.energy`
 
 ## Quick Start
 
@@ -107,7 +119,7 @@ Run directly from source without installing:
 python sprout.py examples/hello_world.spr
 ```
 
-Run the v0.3 world metadata example:
+Run the world metadata example:
 
 ```text
 sprout examples/world.spr
@@ -165,31 +177,28 @@ snapshots, ticks, agents, environments, worlds, and placement validation.
 
 ## Project Status
 
-Sprout v0.3 is an experimental milestone. The repository is suitable for
+Sprout v0.4 is an experimental milestone. The repository is suitable for
 reading, testing, and language-design iteration, but the language is not stable
 and should not be treated as production-ready.
 
-The current implementation is intentionally conservative: metadata systems are
-added before runtime simulation behavior so their syntax and validation rules
-can be tested clearly.
+The current implementation is intentionally conservative: runtime simulation
+exists, but it is still focused on deterministic movement, removal, and field
+updates rather than full ecology, perception, or rendering systems.
 
 ## Current Limitations
 
 Sprout does not currently implement:
 
-- Live agent instances or spawning
-- Agent behavior blocks
-- Movement execution
 - Pathfinding
 - Seek, flee, wander, or steering behaviors
-- Collision physics
+- Collision physics beyond one active grid agent per cell
 - Gravity
 - Rendering, animation, or GUI tools
 - Terrain generation
 - Multiple regions or overlapping environments inside a world
 - World transitions
-- Mutation
-- Automatic agent updates during ticks
+- Mutation or reproduction
+- Food systems, combat, or perception queries
 - A published PyPI release
 - A VS Code extension
 
@@ -197,10 +206,9 @@ Sprout does not currently implement:
 
 Likely future areas:
 
-- Live agent instances and spawning
 - Runtime state inspection
-- Movement execution built on the existing compatibility metadata
-- Behavior syntax designed for simulation clarity
+- Speed budget enforcement
+- World queries beyond width/height
 - World regions or richer environment maps
 - Better editor support
 - PyPI publication
@@ -224,15 +232,12 @@ update docs when syntax or user-visible behavior changes.
 
 ## License
 
-No license file is currently included.
-
-TODO: choose and add a license before treating this as an open-source project
-ready for public reuse.
+Sprout is distributed under the license in `LICENSE`.
 
 ## Documentation
 
 - `docs/syntax.md` is the compact language guide.
-- `docs/language-spec.md` is the detailed v0.3 reference.
+- `docs/language-spec.md` is the detailed v0.4 reference.
 - `docs/examples.md` explains example programs.
 - `docs/errors.md` summarizes common error categories.
 - `docs/decisions.md` records language-design decisions.

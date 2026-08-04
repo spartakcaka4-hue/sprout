@@ -1,6 +1,6 @@
-# Sprout v0.3 Language Specification
+# Sprout v0.4 Language Specification
 
-This document is the authoritative reference for Sprout v0.3.
+This document is the authoritative reference for Sprout v0.4.
 
 Sprout is implemented as a lexer, parser, AST, and tree-walking interpreter.
 It is not translated to Python source and executed with `exec()`.
@@ -42,8 +42,9 @@ reused as variable, loop, parameter, or function names.
 Names start with a letter or `_`, followed by letters, digits, or `_`.
 Names are case-sensitive.
 
-The v0.3 words `agent`, `uses`, `environment`, `type`, `world`, `size`,
-`space`, `grid`, `continuous`, `place`, `tick`, `at`, and `when` are
+The v0.4 words `agent`, `uses`, `environment`, `type`, `world`, `size`,
+`space`, `grid`, `continuous`, `place`, `spawn`, `move`, `remove`, `every`,
+`self`, `tick`, `at`, `by`, `to`, and `when` are
 contextual. They only have special meaning in the exact syntax forms
 documented below. They may still be used as ordinary variable names when the
 surrounding syntax is ordinary assignment or expression syntax.
@@ -68,7 +69,7 @@ is no `pass` statement.
 
 ## Values
 
-Sprout v0.3 has four ordinary value types plus one no-value marker.
+Sprout v0.4 has four ordinary value types plus one no-value marker.
 
 ### Number
 
@@ -524,9 +525,10 @@ tick.number
 interpreter and increments only after one complete tick finishes. Failed or
 partial ticks do not increment it.
 
-In v0.3, a complete tick does not run world or agent behavior yet. It only
-uses the shared internal tick execution path and then increments
-`tick.number`.
+In v0.4, a complete tick snapshots which active agents exist at tick start,
+visits each of those agents once in permanent spawn order, runs any
+`every tick:` block against the current live world state, applies delayed
+mid-tick spawns after that pass, and then increments `tick.number`.
 
 ### tick.start(rate)
 
@@ -576,7 +578,7 @@ Runs manual ticks. `tick.next()` runs exactly 1 complete tick.
 Number.
 
 Manual ticks use the same internal one-complete-tick execution path as
-automatic ticks. In v0.3, breakpoints apply only to automatic ticking and do
+automatic ticks. In v0.4, breakpoints apply only to automatic ticking and do
 not stop manual `tick.next(...)`.
 
 ### tick.stop
@@ -611,8 +613,9 @@ continues from a breakpoint pause using the previous rate.
 
 ## Agent Declarations
 
-Agent declarations define agent metadata. They do not create live instances,
-spawn anything, move anything, or run behavior in v0.3.
+Agent declarations define agent types. They do not create instances by
+themselves, but v0.4 can spawn live instances from them and can run an
+optional `every tick:` behavior block.
 
 Syntax with presets:
 
@@ -767,7 +770,7 @@ movement.passive
 Fields: `direction`. Allowed environments: `ground`, `water`, `air`. Active
 movement: false. Meaning: the agent cannot initiate movement itself, but may
 later be moved by external forces such as wind, currents, conveyors, or
-another agent. Those forces are not implemented in v0.3.
+another agent. Those forces are not implemented in v0.4.
 
 ### biology
 
@@ -822,9 +825,8 @@ Environment declarations are top-level only.
 
 ## Worlds
 
-World declarations define bounded 2D space metadata and reference one default
-environment. They do not render, generate terrain, contain regions, move
-agents, or spawn instances in v0.3.
+World declarations define bounded 2D runtime spaces and reference one default
+environment. They do not render, generate terrain, or contain regions yet.
 
 Syntax:
 
@@ -896,7 +898,7 @@ environment = Land
 ```
 
 The name must refer to an environment that has already been declared. A world
-has exactly one default environment in v0.3. Multiple regions, overlapping
+has exactly one default environment in v0.4. Multiple regions, overlapping
 environments, and multi-environment worlds are not supported yet.
 
 World names are metadata only. A world declaration does not create an ordinary
@@ -905,7 +907,7 @@ variable named after the world.
 ## Placement Metadata
 
 Placement declarations validate that an agent type can be associated with an
-environment or world, then store metadata records for future spawning or
+environment or world, then store metadata records for compatibility checks and
 runtime work.
 
 Environment placement syntax:
@@ -952,7 +954,7 @@ This raises a runtime error similar to:
 Blob uses movement.ground and cannot be placed in an air environment.
 ```
 
-If an agent has no movement preset, placement uses `movement.none`. In v0.3,
+If an agent has no movement preset, placement uses `movement.none`. In v0.4,
 `movement.none` may be placed in any supported environment as stationary
 metadata, and active movement is false.
 
@@ -960,7 +962,7 @@ metadata, and active movement is false.
 movement remains false.
 
 Duplicate placement declarations are allowed as separate metadata records.
-They do not create live instances yet.
+They do not create live instances; use `spawn` for that.
 
 World placement syntax:
 
@@ -995,12 +997,58 @@ placement.
 World placement stores metadata including the world name, coordinates, space
 type, default environment name and type, movement preset, allowed environments,
 active movement flag, and position preset. It does not create a live agent
-instance.
+instance; use `spawn` for live runtime instances.
 
 Duplicate world placement declarations are allowed as separate metadata
 records.
 
-## Unsupported In v0.3
+## Runtime Instances And Ticks
+
+`spawn Agent in World at x, y` creates a live instance. `spawn Agent as name in
+World at x, y` also stores a named reference in ordinary global scope.
+
+Spawn override blocks may set only fields that already exist on the agent
+type. Duplicate overrides are runtime errors. Position fields are not
+overridden in the block; the `at x, y` coordinates determine the spawned
+position.
+
+Preset fields have documented spawn defaults. The defaults are copied per
+instance:
+
+| Preset | Defaults |
+|---|---|
+| `position.basic` | `x = 0`, `y = 0` |
+| `position.cell` | `row = 0`, `column = 0` |
+| `position.continuous` | `x = 0`, `y = 0` |
+| `movement.directional`, `movement.ground`, `movement.water`, `movement.amphibious` | `speed = 1`, `direction = 0` |
+| `movement.velocity` | `velocity_x = 0`, `velocity_y = 0` |
+| `movement.grid` | `grid_x = 0`, `grid_y = 0` |
+| `movement.air`, `movement.aerial_ground` | `speed = 1`, `direction = 0`, `altitude = 0` |
+| `movement.passive` | `direction = 0` |
+| `biology.energy` | `energy = 100`, `alive = true` |
+| `biology.health` | `health = 100`, `max_health = 100`, `alive = true` |
+| `biology.lifecycle` | `age = 0`, `lifespan = 100`, `alive = true` |
+
+Inside `every tick:`, bare field names read and write the current instance.
+`self` refers to that current instance, and `world.width` / `world.height`
+read the current world dimensions.
+
+`move name by dx, dy` applies relative movement. `move name to x, y` applies
+absolute movement. Movement is validated before it is applied: active instance,
+active movement preset, coordinate type, bounds, environment compatibility,
+and grid occupancy all have to pass. Grid worlds allow one active agent per
+cell; continuous worlds allow overlap for now.
+
+`remove name` and `remove self` mark an instance inactive immediately. Removed
+instances do not update again, and their grid cells become free. A removed
+named instance compares as not existing with `name exists`; reading its fields
+is a runtime error.
+
+Ticks are sequential, not synchronous. Spawn order determines update order for
+v0.4. If agent A moves before agent B runs in the same tick, B sees A's new
+position. Agents spawned during a tick begin updating on the next tick.
+
+## Unsupported In v0.4
 
 The following are intentionally out of scope:
 
@@ -1022,9 +1070,6 @@ The following are intentionally out of scope:
 - Block comments
 - Empty blocks and `pass`
 - A published PyPI release
-- Live agent instances and spawning
-- Agent behaviors
-- Actual movement calculations
 - Region maps and multi-environment worlds
 - Tiles and terrain generation
 - World rendering

@@ -233,7 +233,7 @@ class Lexer:
             raise SproutSyntaxError(
                 line_number,
                 index + 1,
-                "Underscore digit separators are not supported in Sprout v0.3.",
+                "Underscore digit separators are not supported in Sprout v0.4.",
                 "Write the digits without underscores.",
                 found="_",
                 expected="digits without separators",
@@ -242,7 +242,7 @@ class Lexer:
             raise SproutSyntaxError(
                 line_number,
                 index + 1,
-                "Scientific notation is not supported in Sprout v0.3.",
+                "Scientific notation is not supported in Sprout v0.4.",
                 "Write the full number instead.",
                 found=line[index],
                 expected="ordinary decimal digits",

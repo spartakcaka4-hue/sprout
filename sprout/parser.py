@@ -5,6 +5,7 @@ from .ast_nodes import (
     AgentFieldDeclaration,
     AgentPresetSelection,
     Assignment,
+    Attribute,
     Binary,
     Call,
     EnvironmentDeclaration,
@@ -20,7 +21,11 @@ from .ast_nodes import (
     Program,
     RepeatStatement,
     ReturnStatement,
+    MoveStatement,
+    RemoveStatement,
     Statement,
+    SpawnOverride,
+    SpawnStatement,
     TickBreakStatement,
     TickNumber,
     TickStatement,
@@ -77,6 +82,12 @@ class Parser:
             return self._placement_declaration()
         if self._is_agent_statement_start():
             return self._agent_declaration()
+        if self._is_spawn_statement_start():
+            return self._spawn_statement()
+        if self._is_move_statement_start():
+            return self._move_statement()
+        if self._is_remove_statement_start():
+            return self._remove_statement()
         if self._is_tick_statement_start():
             return self._tick_statement()
         if self._match(TokenType.IF):
@@ -123,7 +134,7 @@ class Parser:
                 raise SproutSyntaxError(
                     token.line,
                     token.column,
-                    "List item assignment is not supported in Sprout v0.3.",
+                    "List item assignment is not supported in Sprout v0.4.",
                     "Create a new list value instead.",
                 )
             raise SproutSyntaxError(
@@ -360,7 +371,7 @@ class Parser:
             raise SproutSyntaxError(
                 token.line,
                 token.column,
-                "Empty world declarations are not supported in Sprout v0.3.",
+                "Empty world declarations are not supported in Sprout v0.4.",
                 "Add `size`, `space`, and `environment` fields.",
             )
 
@@ -430,6 +441,106 @@ class Parser:
         self._consume_statement_end()
         return PlacementDeclaration(agent_name.lexeme, target_name.lexeme, place.line, place.column)
 
+    def _spawn_statement(self) -> SpawnStatement:
+        spawn = self._advance()
+        agent_name = self._consume(TokenType.IDENTIFIER, "Expected an agent type after `spawn`.")
+
+        instance_name: str | None = None
+        if self._match(TokenType.AS):
+            name = self._consume(TokenType.IDENTIFIER, "Expected an instance name after `as`.")
+            self._check_name_is_assignable(name)
+            instance_name = name.lexeme
+
+        self._consume(TokenType.IN, "Expected `in` after the agent type or instance name.")
+        world_name = self._consume(TokenType.IDENTIFIER, "Expected a world name after `in`.")
+        at = self._consume_contextual_identifier("at", "Expected `at` before spawn coordinates.")
+        x = self._expression()
+        self._consume(TokenType.COMMA, "Expected `,` between spawn coordinates.")
+        y = self._expression()
+
+        overrides: list[SpawnOverride] = []
+        if self._match(TokenType.COLON):
+            overrides = self._spawn_override_block()
+        else:
+            self._consume_statement_end()
+
+        return SpawnStatement(
+            agent_name.lexeme,
+            instance_name,
+            world_name.lexeme,
+            x,
+            y,
+            overrides,
+            spawn.line,
+            spawn.column,
+        )
+
+    def _spawn_override_block(self) -> list[SpawnOverride]:
+        if not self._match(TokenType.NEWLINE):
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Expected a new line after `:`.",
+                "Put spawn field overrides on the next line and indent them by 4 spaces.",
+            )
+        if not self._match(TokenType.INDENT):
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Expected an indented block after `spawn`.",
+                "Indent field overrides like `energy = 70` by 4 spaces.",
+            )
+
+        overrides: list[SpawnOverride] = []
+        self.block_depth += 1
+        try:
+            while not self._check(TokenType.DEDENT) and not self._check(TokenType.EOF):
+                if self._match(TokenType.NEWLINE):
+                    continue
+                name = self._consume(TokenType.IDENTIFIER, "Expected a field name in the spawn override block.")
+                self._consume(TokenType.EQUAL, f"Expected `=` after `{name.lexeme}`.")
+                value = self._expression()
+                self._consume_statement_end()
+                overrides.append(SpawnOverride(name.lexeme, value, name.line, name.column))
+        finally:
+            self.block_depth -= 1
+
+        if not overrides:
+            token = self._peek()
+            raise SproutSyntaxError(
+                token.line,
+                token.column,
+                "Empty spawn override blocks are not supported.",
+                "Remove the `:` or add at least one field override.",
+            )
+        self._consume(TokenType.DEDENT, "Expected the spawn override block to end with a matching dedent.")
+        return overrides
+
+    def _move_statement(self) -> MoveStatement:
+        move = self._advance()
+        target = self._consume(TokenType.IDENTIFIER, "Expected an agent instance name or `self` after `move`.")
+        mode = self._consume(TokenType.IDENTIFIER, "Expected `by` or `to` after the move target.")
+        if mode.lexeme not in ("by", "to"):
+            raise SproutSyntaxError(
+                mode.line,
+                mode.column,
+                "Expected `by` or `to` after the move target.",
+                "Use `move self by dx, dy` or `move self to x, y`.",
+            )
+        x = self._expression()
+        self._consume(TokenType.COMMA, "Expected `,` between movement coordinates.")
+        y = self._expression()
+        self._consume_statement_end()
+        return MoveStatement(target.lexeme, mode.lexeme, x, y, move.line, move.column)
+
+    def _remove_statement(self) -> RemoveStatement:
+        remove = self._advance()
+        target = self._consume(TokenType.IDENTIFIER, "Expected an agent instance name or `self` after `remove`.")
+        self._consume_statement_end()
+        return RemoveStatement(target.lexeme, remove.line, remove.column)
+
     def _agent_declaration(self) -> AgentDeclaration:
         agent_token = self._advance()
         if self.block_depth != 0:
@@ -448,13 +559,21 @@ class Parser:
             self._advance()
             uses_presets = True
 
-        presets, fields = self._agent_body(uses_presets)
-        return AgentDeclaration(name.lexeme, uses_presets, presets, fields, agent_token.line, agent_token.column)
+        presets, fields, every_tick_body = self._agent_body(uses_presets)
+        return AgentDeclaration(
+            name.lexeme,
+            uses_presets,
+            presets,
+            fields,
+            every_tick_body,
+            agent_token.line,
+            agent_token.column,
+        )
 
     def _agent_body(
         self,
         uses_presets: bool,
-    ) -> tuple[list[AgentPresetSelection], list[AgentFieldDeclaration]]:
+    ) -> tuple[list[AgentPresetSelection], list[AgentFieldDeclaration], list[Statement] | None]:
         self._consume_colon_after_header("agent")
         if not self._match(TokenType.NEWLINE):
             token = self._peek()
@@ -475,10 +594,23 @@ class Parser:
 
         presets: list[AgentPresetSelection] = []
         fields: list[AgentFieldDeclaration] = []
+        every_tick_body: list[Statement] | None = None
         self.block_depth += 1
         try:
             while not self._check(TokenType.DEDENT) and not self._check(TokenType.EOF):
                 if self._match(TokenType.NEWLINE):
+                    continue
+                if self._is_every_tick_block_start():
+                    every_token = self._advance()
+                    self._advance()
+                    if every_tick_body is not None:
+                        raise SproutSyntaxError(
+                            every_token.line,
+                            every_token.column,
+                            "Agent declarations can only define `every tick:` once.",
+                            "Combine the tick behavior into one `every tick:` block.",
+                        )
+                    every_tick_body = self._block("every tick")
                     continue
                 preset, field = self._agent_body_item(uses_presets)
                 if preset is not None:
@@ -488,16 +620,16 @@ class Parser:
         finally:
             self.block_depth -= 1
 
-        if not presets and not fields:
+        if not presets and not fields and every_tick_body is None:
             token = self._peek()
             raise SproutSyntaxError(
                 token.line,
                 token.column,
-                "Empty agent declarations are not supported in Sprout v0.3.",
+                "Empty agent declarations are not supported in Sprout v0.4.",
                 "Add at least one preset or custom field.",
             )
         self._consume(TokenType.DEDENT, "Expected the agent block to end with a matching dedent.")
-        return presets, fields
+        return presets, fields, every_tick_body
 
     def _agent_body_item(
         self,
@@ -571,7 +703,7 @@ class Parser:
             raise SproutSyntaxError(
                 token.line,
                 token.column,
-                "Empty blocks are not supported in Sprout v0.3.",
+                "Empty blocks are not supported in Sprout v0.4.",
                 "Add at least one statement inside the block.",
             )
         self._consume(TokenType.DEDENT, "Expected the block to end with a matching dedent.")
@@ -687,6 +819,10 @@ class Parser:
                 index = self._expression()
                 self._consume(TokenType.RIGHT_BRACKET, "Expected `]` after the index.")
                 expression = Index(expression, index, expression.line, expression.column)
+            elif self._match(TokenType.DOT):
+                dot = self._previous()
+                name = self._consume(TokenType.IDENTIFIER, "Expected a field name after `.`.")
+                expression = Attribute(expression, name.lexeme, dot.line, dot.column)
             else:
                 break
         return expression
@@ -770,6 +906,12 @@ class Parser:
         if self._check(token_type):
             return self._advance()
         token = self._peek()
+        raise SproutSyntaxError(token.line, token.column, message)
+
+    def _consume_contextual_identifier(self, lexeme: str, message: str) -> Token:
+        token = self._consume(TokenType.IDENTIFIER, message)
+        if token.lexeme == lexeme:
+            return token
         raise SproutSyntaxError(token.line, token.column, message)
 
     def _tick_statement(self) -> Statement:
@@ -895,12 +1037,44 @@ class Parser:
             return False
         return self._check_next(TokenType.IDENTIFIER)
 
+    def _is_spawn_statement_start(self) -> bool:
+        if not self._check(TokenType.IDENTIFIER):
+            return False
+        if self._peek().lexeme != "spawn":
+            return False
+        return self._check_next(TokenType.IDENTIFIER)
+
+    def _is_move_statement_start(self) -> bool:
+        if not self._check(TokenType.IDENTIFIER):
+            return False
+        if self._peek().lexeme != "move":
+            return False
+        return self._check_next(TokenType.IDENTIFIER)
+
+    def _is_remove_statement_start(self) -> bool:
+        if not self._check(TokenType.IDENTIFIER):
+            return False
+        if self._peek().lexeme != "remove":
+            return False
+        return self._check_next(TokenType.IDENTIFIER)
+
     def _is_tick_statement_start(self) -> bool:
         if not self._check(TokenType.IDENTIFIER):
             return False
         if self._peek().lexeme != "tick":
             return False
         return self._check_next(TokenType.DOT)
+
+    def _is_every_tick_block_start(self) -> bool:
+        if self.current + 2 >= len(self.tokens):
+            return False
+        return (
+            self.tokens[self.current].type == TokenType.IDENTIFIER
+            and self.tokens[self.current].lexeme == "every"
+            and self.tokens[self.current + 1].type == TokenType.IDENTIFIER
+            and self.tokens[self.current + 1].lexeme == "tick"
+            and self.tokens[self.current + 2].type == TokenType.COLON
+        )
 
     def _is_tick_number_expression(self) -> bool:
         if self.current + 2 >= len(self.tokens):

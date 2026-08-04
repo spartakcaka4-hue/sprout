@@ -35,6 +35,7 @@ class AgentDefinition:
     name: str
     selected_presets: dict[str, AgentPreset]
     fields: dict[str, AgentFieldDefinition]
+    every_tick_body: list[object] | None
     line: int
     column: int
 
@@ -182,4 +183,27 @@ PRESET_GROUPS: dict[str, dict[str, AgentPreset]] = {
         "health": AgentPreset("biology", "health", ("health", "max_health", "alive")),
         "lifecycle": AgentPreset("biology", "lifecycle", ("age", "lifespan", "alive")),
     },
+}
+
+
+# v0.4 spawn defaults. These are copied per live instance, never shared.
+PRESET_FIELD_DEFAULTS: dict[str, dict[str, object]] = {
+    "position.none": {},
+    "position.basic": {"x": 0.0, "y": 0.0},
+    "position.cell": {"row": 0.0, "column": 0.0},
+    "position.continuous": {"x": 0.0, "y": 0.0},
+    "movement.none": {},
+    "movement.directional": {"speed": 1.0, "direction": 0.0},
+    "movement.velocity": {"velocity_x": 0.0, "velocity_y": 0.0},
+    "movement.grid": {"grid_x": 0.0, "grid_y": 0.0},
+    "movement.ground": {"speed": 1.0, "direction": 0.0},
+    "movement.water": {"speed": 1.0, "direction": 0.0},
+    "movement.air": {"speed": 1.0, "direction": 0.0, "altitude": 0.0},
+    "movement.amphibious": {"speed": 1.0, "direction": 0.0},
+    "movement.aerial_ground": {"speed": 1.0, "direction": 0.0, "altitude": 0.0},
+    "movement.passive": {"direction": 0.0},
+    "biology.none": {},
+    "biology.energy": {"energy": 100.0, "alive": True},
+    "biology.health": {"health": 100.0, "max_health": 100.0, "alive": True},
+    "biology.lifecycle": {"age": 0.0, "lifespan": 100.0, "alive": True},
 }

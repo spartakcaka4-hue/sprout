@@ -389,6 +389,59 @@ Consequences: `tick.number`, manual ticking, automatic ticking, pause, resume,
 stop, and breakpoints exist now. A complete v0.3 tick only advances the tick
 counter.
 
+## Sequential Spawn-Order Tick Updates
+
+Decision: v0.4 runs live agent behavior sequentially, in permanent spawn
+order. Each tick snapshots which agents exist at tick start, then visits those
+agents once. Field reads, movement checks, and collisions see the current live
+world state, including changes made by earlier agents in the same tick.
+
+Reason: population-style simulations need deterministic, inspectable behavior,
+and spawn order is the simplest deterministic rule.
+
+Alternatives considered: synchronous snapshot updates, double-buffered field
+state, deferred movement commits, and randomized update order.
+
+Why rejected: each adds hidden timing rules. Snapshot-style updates are useful
+for some simulations, but v0.4 intentionally chooses live sequential execution
+so users can reason about exactly what the next agent sees.
+
+Consequences: agent A can move before agent B runs, and B sees A's new
+position. Agents spawned mid-tick start updating on the next tick. Removed
+agents become inactive immediately and do not run later in the same tick.
+
+## Preset Field Defaults
+
+Decision: v0.4 gives preset fields documented spawn defaults, copied into each
+live instance:
+
+| Preset | Defaults |
+|---|---|
+| `position.basic` | `x = 0`, `y = 0` |
+| `position.cell` | `row = 0`, `column = 0` |
+| `position.continuous` | `x = 0`, `y = 0` |
+| `movement.directional`, `movement.ground`, `movement.water`, `movement.amphibious` | `speed = 1`, `direction = 0` |
+| `movement.velocity` | `velocity_x = 0`, `velocity_y = 0` |
+| `movement.grid` | `grid_x = 0`, `grid_y = 0` |
+| `movement.air`, `movement.aerial_ground` | `speed = 1`, `direction = 0`, `altitude = 0` |
+| `movement.passive` | `direction = 0` |
+| `biology.energy` | `energy = 100`, `alive = true` |
+| `biology.health` | `health = 100`, `max_health = 100`, `alive = true` |
+| `biology.lifecycle` | `age = 0`, `lifespan = 100`, `alive = true` |
+
+Reason: spawning should produce predictable, independent instances even when a
+program does not override every field.
+
+Alternatives considered: leaving preset fields uninitialized, filling missing
+fields with `nothing`, or making defaults depend on world type.
+
+Why rejected: uninitialized or `nothing` fields push too many checks into user
+programs. World-dependent defaults would hide extra spawn behavior.
+
+Consequences: mutating one instance's fields does not affect another instance
+of the same type. Spawn overrides may change existing non-position fields, but
+position comes from `at x, y`.
+
 ## One Shared Tick Execution Path
 
 Decision: manual ticks and automatic ticks call the same internal

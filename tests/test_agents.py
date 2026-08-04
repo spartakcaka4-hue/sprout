@@ -57,7 +57,8 @@ class AgentTests(unittest.TestCase):
             ["position.basic", "movement.directional", "biology.energy"],
         )
         self.assertEqual(list(agent.fields), ["x", "y", "speed", "direction", "energy", "alive"])
-        self.assertFalse(agent.fields["x"].has_default)
+        self.assertTrue(agent.fields["x"].has_default)
+        self.assertEqual(agent.fields["x"].default, 0.0)
         self.assertEqual(agent.fields["x"].preset, "position.basic")
 
     def test_custom_variables_coexist_with_builtin_fields(self):

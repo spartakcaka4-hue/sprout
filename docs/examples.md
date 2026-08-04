@@ -1,9 +1,8 @@
 # Examples
 
 The first programs below are available in `examples/` and are covered by
-automated tests. The v0.3 snippets show metadata and tick-control syntax; they
-do not demonstrate simulation behavior because v0.3 does not include live
-agents, live world simulation, or movement calculations yet.
+automated tests. The snippets also show v0.4 runtime behavior such as spawning,
+movement, removal, and sequential ticks.
 
 After local installation, run any example with:
 
@@ -161,7 +160,46 @@ Output: no output.
 This example declares environment, agent, world, and world-placement metadata.
 It does not spawn or render a Blob.
 
-## v0.3 Tick Snippet
+## v0.4 Runtime Snippet
+
+```text
+environment Land:
+    type = ground
+
+agent Banana uses:
+    position.cell
+    movement.ground
+    biology.energy
+
+    every tick:
+        energy = energy - 1
+        move self by 1, 0
+
+        if energy <= 0:
+            remove self
+
+world Kitchen:
+    size = 10, 10
+    space = grid
+    environment = Land
+
+spawn Banana as bob in Kitchen at 0, 4:
+    energy = 3
+
+tick.next(3)
+print(bob exists)
+```
+
+Output:
+
+```text
+false
+```
+
+`bob` is a live instance. It updates once per tick, in spawn order, and is
+removed when its energy reaches 0.
+
+## Tick Snippet
 
 ```text
 tick.next(3)
@@ -174,7 +212,7 @@ Output:
 3
 ```
 
-## v0.3 Agent Preset Snippet
+## Agent Preset Snippet
 
 ```text
 agent Blob uses:
@@ -186,10 +224,11 @@ agent Blob uses:
     vision = 10
 ```
 
-This declares agent metadata. It injects fields from the selected presets and
-adds the custom `hunger` and `vision` fields. It does not spawn a Blob.
+This declares an agent type. It injects fields from the selected presets and
+adds the custom `hunger` and `vision` fields. Use `spawn` to create a live
+Blob instance from it.
 
-## v0.3 Environment Placement Snippet
+## Environment Placement Metadata Snippet
 
 ```text
 agent Fish uses:
@@ -206,7 +245,7 @@ place Fish in Lake
 This stores placement metadata after validating that `movement.water` is
 allowed in a `water` environment.
 
-## v0.3 World Placement Snippet
+## World Placement Metadata Snippet
 
 ```text
 environment Ground:

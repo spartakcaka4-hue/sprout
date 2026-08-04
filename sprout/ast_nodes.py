@@ -98,6 +98,7 @@ class AgentDeclaration(Statement):
     uses_presets: bool
     presets: list[AgentPresetSelection]
     fields: list[AgentFieldDeclaration]
+    every_tick_body: list[Statement] | None
     line: int
     column: int
 
@@ -141,6 +142,43 @@ class WorldPlacementDeclaration(Statement):
     world_name: str
     x: Expression
     y: Expression
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class SpawnOverride:
+    name: str
+    value: Expression
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class SpawnStatement(Statement):
+    agent_name: str
+    instance_name: str | None
+    world_name: str
+    x: Expression
+    y: Expression
+    overrides: list[SpawnOverride]
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class MoveStatement(Statement):
+    target_name: str
+    mode: str
+    x: Expression
+    y: Expression
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class RemoveStatement(Statement):
+    target_name: str
     line: int
     column: int
 
@@ -212,6 +250,14 @@ class Binary(Expression):
 class Call(Expression):
     callee: Expression
     args: list[Expression]
+    line: int
+    column: int
+
+
+@dataclass(frozen=True)
+class Attribute(Expression):
+    target: Expression
+    name: str
     line: int
     column: int
 

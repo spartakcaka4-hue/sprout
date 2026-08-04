@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from .ast_nodes import (
     AgentDeclaration,
     Assignment,
+    Attribute,
     Binary,
     Call,
     EnvironmentDeclaration,
@@ -22,7 +23,10 @@ from .ast_nodes import (
     Program,
     RepeatStatement,
     ReturnStatement,
+    MoveStatement,
+    RemoveStatement,
     Statement,
+    SpawnStatement,
     TickBreakStatement,
     TickNumber,
     TickStatement,
@@ -33,6 +37,7 @@ from .ast_nodes import (
 )
 from .agent_presets import (
     PRESET_GROUPS,
+    PRESET_FIELD_DEFAULTS,
     SUPPORTED_ENVIRONMENT_TYPES,
     SUPPORTED_WORLD_SPACE_TYPES,
     AgentDefinition,
@@ -46,6 +51,7 @@ from .agent_presets import (
 from .builtins import NOTHING, BuiltinFunction, format_value, make_builtins, type_name
 from .errors import SproutRuntimeError
 from .lexer import TokenType
+from .runtime import COORDINATE_FIELDS, AgentInstance, WorldRuntime, clone_value
 
 
 @dataclass(frozen=True)
@@ -75,6 +81,18 @@ class ActiveTickBreakpoint:
     column: int
 
 
+@dataclass(frozen=True)
+class PendingSpawn:
+    agent: AgentDefinition
+    world: WorldRuntime
+    x: float
+    y: float
+    overrides: dict[str, object]
+    instance_name: str | None
+    line: int
+    column: int
+
+
 class Interpreter:
     def __init__(self) -> None:
         self.output_lines: list[str] = []
@@ -82,9 +100,15 @@ class Interpreter:
         self.locals: dict[str, object] | None = None
         self.agents: dict[str, AgentDefinition] = {}
         self.environments: dict[str, EnvironmentDefinition] = {}
-        self.worlds: dict[str, WorldDefinition] = {}
+        self.worlds: dict[str, WorldRuntime] = {}
         self.placements: list[PlacementDefinition] = []
         self.world_placements: list[WorldPlacementDefinition] = []
+        self._next_instance_id = 1
+        self._spawn_order: list[AgentInstance] = []
+        self._current_instance: AgentInstance | None = None
+        self._pending_spawns: list[PendingSpawn] = []
+        self._pending_removals: list[AgentInstance] = []
+        self._executing_tick_agent = False
         self._tick_number = 0
         self._tick_condition = threading.Condition(threading.RLock())
         self._tick_state = "idle"
@@ -123,10 +147,19 @@ class Interpreter:
         if isinstance(statement, WorldPlacementDeclaration):
             self._execute_world_placement_declaration(statement)
             return
+        if isinstance(statement, SpawnStatement):
+            self._execute_spawn_statement(statement)
+            return
+        if isinstance(statement, MoveStatement):
+            self._execute_move_statement(statement)
+            return
+        if isinstance(statement, RemoveStatement):
+            self._execute_remove_statement(statement)
+            return
         if isinstance(statement, Assignment):
             value = self._evaluate(statement.value)
             self._reject_function_value(value, statement.value.line, statement.value.column)
-            self._assign(statement.name, value)
+            self._assign(statement.name, value, statement.line, statement.column)
             return
         if isinstance(statement, ExpressionStatement):
             self._evaluate(statement.expression)
@@ -176,7 +209,7 @@ class Interpreter:
         count = self._require_count(count_value, statement.count.line, statement.count.column)
         for index in range(count):
             if statement.counter_name is not None:
-                self._assign(statement.counter_name, float(index))
+                self._assign(statement.counter_name, float(index), statement.line, statement.column)
             self._execute_block(statement.body)
 
     def _execute_for(self, statement: ForStatement) -> None:
@@ -189,7 +222,7 @@ class Interpreter:
                 f"Found: {type_name(iterable)}.",
             )
         for item in iterable:
-            self._assign(statement.item_name, item)
+            self._assign(statement.item_name, item, statement.line, statement.column)
             self._execute_block(statement.body)
 
     def _execute_agent_declaration(self, statement: AgentDeclaration) -> None:
@@ -212,11 +245,18 @@ class Interpreter:
                     f"Use only one preset from each category; `{previous.full_name}` was already selected.",
                 )
             selected_presets[preset.category] = preset
+            preset_defaults = PRESET_FIELD_DEFAULTS.get(preset.full_name, {})
             for field_name in preset.fields:
                 self._add_agent_field(
                     statement.name,
                     fields,
-                    AgentFieldDefinition(field_name, "preset", preset.full_name, None, False),
+                    AgentFieldDefinition(
+                        field_name,
+                        "preset",
+                        preset.full_name,
+                        preset_defaults.get(field_name, NOTHING),
+                        True,
+                    ),
                     preset_selection.line,
                     preset_selection.column,
                 )
@@ -236,6 +276,7 @@ class Interpreter:
             statement.name,
             selected_presets,
             fields,
+            statement.every_tick_body,
             statement.line,
             statement.column,
         )
@@ -297,7 +338,7 @@ class Interpreter:
                 "Declare the environment before the world.",
             )
 
-        self.worlds[statement.name] = WorldDefinition(
+        definition = WorldDefinition(
             statement.name,
             width,
             height,
@@ -307,6 +348,7 @@ class Interpreter:
             statement.line,
             statement.column,
         )
+        self.worlds[statement.name] = WorldRuntime(definition)
 
     def _execute_placement_declaration(self, statement: PlacementDeclaration) -> None:
         agent = self.agents.get(statement.agent_name)
@@ -408,6 +450,365 @@ class Interpreter:
                 statement.column,
             )
         )
+
+    def _execute_spawn_statement(self, statement: SpawnStatement) -> None:
+        pending_spawn = self._prepare_spawn(statement)
+        if self._executing_tick_agent:
+            self._pending_spawns.append(pending_spawn)
+            return
+        self._apply_spawn(pending_spawn)
+
+    def _prepare_spawn(self, statement: SpawnStatement) -> PendingSpawn:
+        agent = self.agents.get(statement.agent_name)
+        if agent is None:
+            raise SproutRuntimeError(
+                statement.line,
+                statement.column,
+                f"Cannot spawn unknown agent type `{statement.agent_name}`.",
+                "Declare the agent before spawning it.",
+            )
+
+        world = self.worlds.get(statement.world_name)
+        if world is None:
+            raise SproutRuntimeError(
+                statement.line,
+                statement.column,
+                f"Cannot spawn `{statement.agent_name}` in unknown world `{statement.world_name}`.",
+                "Declare the world before spawning agents into it.",
+            )
+
+        movement_preset = self._movement_preset_for_agent(agent)
+        self._validate_movement_environment_compatibility(
+            agent,
+            movement_preset,
+            world.environment_type,
+            statement.line,
+            statement.column,
+        )
+        position_preset = self._position_preset_for_agent(agent)
+        self._validate_position_world_compatibility(
+            agent,
+            position_preset,
+            world,
+            statement.line,
+            statement.column,
+        )
+
+        x_value = self._evaluate(statement.x)
+        self._reject_function_value(x_value, statement.x.line, statement.x.column)
+        y_value = self._evaluate(statement.y)
+        self._reject_function_value(y_value, statement.y.line, statement.y.column)
+        x = self._require_world_coordinate(x_value, statement.x.line, statement.x.column, "x", world)
+        y = self._require_world_coordinate(y_value, statement.y.line, statement.y.column, "y", world)
+        self._validate_spawn_cell_available(agent, world, x, y, statement.instance_name, statement.line, statement.column)
+
+        overrides = self._evaluate_spawn_overrides(agent, statement)
+        return PendingSpawn(agent, world, x, y, overrides, statement.instance_name, statement.line, statement.column)
+
+    def _evaluate_spawn_overrides(
+        self,
+        agent: AgentDefinition,
+        statement: SpawnStatement,
+    ) -> dict[str, object]:
+        overrides: dict[str, object] = {}
+        for override in statement.overrides:
+            if override.name in overrides:
+                raise SproutRuntimeError(
+                    override.line,
+                    override.column,
+                    f"Spawn for `{agent.name}` overrides field `{override.name}` more than once.",
+                    "Keep only one value for each spawn-time field override.",
+                )
+            if override.name in COORDINATE_FIELDS:
+                raise SproutRuntimeError(
+                    override.line,
+                    override.column,
+                    f"Spawn for `{agent.name}` cannot override position field `{override.name}`.",
+                    "Use the `at x, y` coordinates to choose the spawned instance position.",
+                )
+            if override.name not in agent.fields:
+                raise SproutRuntimeError(
+                    override.line,
+                    override.column,
+                    f"Agent `{agent.name}` has no field `{override.name}` to override.",
+                    "Declare the field on the agent type first, or remove this override.",
+                )
+            value = self._evaluate(override.value)
+            self._reject_function_value(value, override.value.line, override.value.column)
+            overrides[override.name] = clone_value(value)
+        return overrides
+
+    def _apply_spawn(self, pending_spawn: PendingSpawn) -> AgentInstance:
+        self._validate_spawn_cell_available(
+            pending_spawn.agent,
+            pending_spawn.world,
+            pending_spawn.x,
+            pending_spawn.y,
+            pending_spawn.instance_name,
+            pending_spawn.line,
+            pending_spawn.column,
+        )
+
+        fields: dict[str, object] = {}
+        for field_name, field_definition in pending_spawn.agent.fields.items():
+            default = field_definition.default if field_definition.has_default else NOTHING
+            fields[field_name] = clone_value(default)
+        for field_name, value in pending_spawn.overrides.items():
+            fields[field_name] = clone_value(value)
+
+        instance = AgentInstance(
+            self._next_instance_id,
+            pending_spawn.agent,
+            pending_spawn.world,
+            pending_spawn.x,
+            pending_spawn.y,
+            fields,
+            self._movement_preset_for_agent(pending_spawn.agent),
+            self._position_preset_for_agent(pending_spawn.agent),
+            pending_spawn.instance_name,
+        )
+        self._next_instance_id += 1
+        instance.set_position(pending_spawn.x, pending_spawn.y)
+        pending_spawn.world.add_agent(instance)
+        self._spawn_order.append(instance)
+        if pending_spawn.instance_name is not None:
+            self.globals[pending_spawn.instance_name] = instance
+        return instance
+
+    def _validate_spawn_cell_available(
+        self,
+        agent: AgentDefinition,
+        world: WorldRuntime,
+        x: float,
+        y: float,
+        instance_name: str | None,
+        line: int,
+        column: int,
+    ) -> None:
+        occupant = world.active_agent_at(x, y)
+        if occupant is None:
+            return
+        name_part = f" as `{instance_name}`" if instance_name is not None else ""
+        raise SproutRuntimeError(
+            line,
+            column,
+            f"Cannot spawn `{agent.name}`{name_part} in world `{world.name}` at ({format_value(x)}, {format_value(y)}).",
+            f"That grid cell is already occupied by {occupant.error_name}. Choose an empty cell.",
+        )
+
+    def _execute_move_statement(self, statement: MoveStatement) -> None:
+        instance = self._resolve_instance_target(statement.target_name, statement.line, statement.column, "move")
+        self._require_active_instance(instance, statement.line, statement.column, "move")
+
+        x_value = self._evaluate(statement.x)
+        self._reject_function_value(x_value, statement.x.line, statement.x.column)
+        y_value = self._evaluate(statement.y)
+        self._reject_function_value(y_value, statement.y.line, statement.y.column)
+        move_x = self._require_movement_number(x_value, statement.x.line, statement.x.column, "x")
+        move_y = self._require_movement_number(y_value, statement.y.line, statement.y.column, "y")
+
+        if statement.mode == "by":
+            self._require_coordinate_compatible(move_x, instance.world, statement.x.line, statement.x.column, "x delta")
+            self._require_coordinate_compatible(move_y, instance.world, statement.y.line, statement.y.column, "y delta")
+            target_x = instance.x + move_x
+            target_y = instance.y + move_y
+            action = f"move by ({format_value(move_x)}, {format_value(move_y)})"
+        elif statement.mode == "to":
+            target_x = move_x
+            target_y = move_y
+            action = f"move to ({format_value(target_x)}, {format_value(target_y)})"
+        else:
+            raise AssertionError(f"Unhandled move mode: {statement.mode}")
+
+        self._validate_agent_can_move(instance, action, statement.line, statement.column)
+        self._require_coordinate_compatible(target_x, instance.world, statement.x.line, statement.x.column, "target x")
+        self._require_coordinate_compatible(target_y, instance.world, statement.y.line, statement.y.column, "target y")
+        self._validate_move_bounds(instance, target_x, target_y, statement.line, statement.column)
+        self._validate_runtime_movement_environment(instance, action, statement.line, statement.column)
+        self._validate_move_occupancy(instance, target_x, target_y, statement.line, statement.column)
+
+        old_x = instance.x
+        old_y = instance.y
+        instance.world.update_agent_position(instance, target_x, target_y)
+        instance.record_move(old_x, old_y)
+
+    def _execute_remove_statement(self, statement: RemoveStatement) -> None:
+        instance = self._resolve_instance_target(statement.target_name, statement.line, statement.column, "remove")
+        self._require_active_instance(instance, statement.line, statement.column, "remove")
+        self._remove_instance(instance)
+
+    def _resolve_instance_target(
+        self,
+        target_name: str,
+        line: int,
+        column: int,
+        action: str,
+    ) -> AgentInstance:
+        if target_name == "self":
+            if self._current_instance is None:
+                raise SproutRuntimeError(
+                    line,
+                    column,
+                    "`self` can only be used inside an agent behavior block.",
+                    f"Use a named instance when calling `{action}` outside `every tick:`.",
+                )
+            return self._current_instance
+
+        value = self._lookup(target_name, line, column)
+        if isinstance(value, AgentInstance):
+            return value
+        raise SproutRuntimeError(
+            line,
+            column,
+            f"`{target_name}` is not an agent instance.",
+            f"Spawn an agent with `spawn Agent as {target_name} in World at x, y` before calling `{action}`.",
+        )
+
+    def _require_active_instance(self, instance: AgentInstance, line: int, column: int, action: str) -> None:
+        if instance.active and not instance.removed:
+            return
+        raise SproutRuntimeError(
+            line,
+            column,
+            f"Agent instance {instance.error_name} cannot {action} because it has been removed.",
+            f"Its type `{instance.type_name}` belonged to world `{instance.world.name}`. Spawn a new instance before using it again.",
+        )
+
+    def _require_instance_accessible(
+        self,
+        instance: AgentInstance,
+        line: int,
+        column: int,
+        field_name: str,
+    ) -> None:
+        if instance.active and not instance.removed:
+            return
+        raise SproutRuntimeError(
+            line,
+            column,
+            f"Cannot read `{field_name}` from removed agent instance {instance.error_name}.",
+            f"Its type `{instance.type_name}` belonged to world `{instance.world.name}`. Check `{instance.display_name} exists` before reading fields.",
+        )
+
+    def _require_movement_number(self, value: object, line: int, column: int, axis: str) -> float:
+        if type(value) is float:
+            return value
+        raise SproutRuntimeError(
+            line,
+            column,
+            "Invalid movement coordinate.",
+            f"Movement {axis} values must be numbers. Found: {type_name(value)}.",
+        )
+
+    def _require_coordinate_compatible(
+        self,
+        value: float,
+        world: WorldRuntime,
+        line: int,
+        column: int,
+        label: str,
+    ) -> None:
+        if world.space_type != "grid" or value.is_integer():
+            return
+        raise SproutRuntimeError(
+            line,
+            column,
+            f"Invalid grid movement {label}.",
+            f"World `{world.name}` uses grid space, so movement coordinates must be whole numbers.",
+        )
+
+    def _validate_agent_can_move(
+        self,
+        instance: AgentInstance,
+        action: str,
+        line: int,
+        column: int,
+    ) -> None:
+        if instance.movement_preset.can_move_actively:
+            return
+        if instance.movement_preset.full_name == "movement.passive":
+            detail = "Passive agents may only be moved by external forces."
+        else:
+            detail = "Choose an active movement preset such as `movement.ground`, `movement.water`, or `movement.air`."
+        raise SproutRuntimeError(
+            line,
+            column,
+            f"Agent instance {instance.error_name} cannot {action}.",
+            f"Its type `{instance.type_name}` uses `{instance.movement_preset.full_name}` in world `{instance.world.name}`. {detail}",
+        )
+
+    def _validate_move_bounds(
+        self,
+        instance: AgentInstance,
+        target_x: float,
+        target_y: float,
+        line: int,
+        column: int,
+    ) -> None:
+        world = instance.world
+        if 0 <= target_x < world.width and 0 <= target_y < world.height:
+            return
+        details = [
+            f"Moving {instance.error_name} would place it outside world `{world.name}`.",
+            f"Target position: ({format_value(target_x)}, {format_value(target_y)}).",
+            f"Valid x range: 0 to less than {world.width}.",
+            f"Valid y range: 0 to less than {world.height}.",
+        ]
+        raise SproutRuntimeError(
+            line,
+            column,
+            "\n".join(details),
+            "Use a smaller movement delta or choose a target inside the world bounds.",
+        )
+
+    def _validate_runtime_movement_environment(
+        self,
+        instance: AgentInstance,
+        action: str,
+        line: int,
+        column: int,
+    ) -> None:
+        if instance.world.environment_type in instance.movement_preset.allowed_environments:
+            return
+        raise SproutRuntimeError(
+            line,
+            column,
+            f"Agent instance {instance.error_name} cannot {action} in world `{instance.world.name}`.",
+            f"Its type `{instance.type_name}` uses `{instance.movement_preset.full_name}`, which is not compatible with `{instance.world.environment_type}` environments.",
+        )
+
+    def _validate_move_occupancy(
+        self,
+        instance: AgentInstance,
+        target_x: float,
+        target_y: float,
+        line: int,
+        column: int,
+    ) -> None:
+        occupant = instance.world.active_agent_at(target_x, target_y, ignore_id=instance.runtime_id)
+        if occupant is None:
+            return
+        raise SproutRuntimeError(
+            line,
+            column,
+            f"Moving {instance.error_name} would collide in world `{instance.world.name}`.",
+            f"Target cell ({format_value(target_x)}, {format_value(target_y)}) is already occupied by {occupant.error_name}. Choose an empty cell.",
+        )
+
+    def _remove_instance(self, instance: AgentInstance) -> None:
+        if instance.removed:
+            return
+        instance.active = False
+        instance.removed = True
+        instance.world.remove_agent_from_layer(instance)
+        self._pending_removals.append(instance)
+
+    def _cleanup_removed_instances(self) -> None:
+        if not self._pending_removals:
+            return
+        for instance in self._pending_removals:
+            instance.world.agents.pop(instance.runtime_id, None)
+        self._pending_removals = []
 
     def _movement_preset_for_agent(self, agent: AgentDefinition) -> AgentPreset:
         preset = agent.selected_presets.get("movement")
@@ -666,9 +1067,47 @@ class Interpreter:
         self._tick_condition.notify_all()
 
     def _execute_one_complete_tick(self) -> None:
+        tick_agents = [instance for instance in self._spawn_order if instance.active and not instance.removed]
+        for instance in tick_agents:
+            instance.reset_tick_movement()
+
+        try:
+            for instance in tick_agents:
+                if not instance.active or instance.removed:
+                    continue
+                body = instance.definition.every_tick_body
+                if body is None:
+                    continue
+                self._execute_agent_tick_body(instance, body)
+        except SproutRuntimeError:
+            self._pending_spawns = []
+            raise
+
+        self._apply_pending_spawns()
+        self._cleanup_removed_instances()
         with self._tick_condition:
             self._tick_number += 1
             self._tick_condition.notify_all()
+
+    def _execute_agent_tick_body(self, instance: AgentInstance, body: list[Statement]) -> None:
+        previous_instance = self._current_instance
+        previous_executing_tick_agent = self._executing_tick_agent
+        self._current_instance = instance
+        self._executing_tick_agent = True
+        try:
+            self._execute_block(body)
+        finally:
+            self._current_instance = previous_instance
+            self._executing_tick_agent = previous_executing_tick_agent
+            self._cleanup_removed_instances()
+
+    def _apply_pending_spawns(self) -> None:
+        if not self._pending_spawns:
+            return
+        pending_spawns = self._pending_spawns
+        self._pending_spawns = []
+        for pending_spawn in pending_spawns:
+            self._apply_spawn(pending_spawn)
 
     def _tick_breakpoint_triggered(self) -> bool:
         with self._tick_condition:
@@ -702,6 +1141,8 @@ class Interpreter:
     def _execute_block(self, statements: list[Statement]) -> None:
         for statement in statements:
             self._execute(statement)
+            if self._current_instance is not None and self._current_instance.removed:
+                break
 
     def _evaluate(self, expression: Expression) -> object:
         if isinstance(expression, Literal):
@@ -726,6 +1167,8 @@ class Interpreter:
             return self._evaluate_binary(expression)
         if isinstance(expression, Call):
             return self._evaluate_call(expression)
+        if isinstance(expression, Attribute):
+            return self._evaluate_attribute(expression)
         if isinstance(expression, Index):
             return self._evaluate_index(expression)
         raise AssertionError(f"Unhandled expression: {expression!r}")
@@ -818,7 +1261,7 @@ class Interpreter:
                 raise SproutRuntimeError(
                     expression.line,
                     expression.column,
-                    "Functions are not ordinary values in Sprout v0.3.",
+                    "Functions are not ordinary values in Sprout v0.4.",
                     "Call the function instead of comparing it.",
                 )
             result = self._equals(left, right)
@@ -866,13 +1309,44 @@ class Interpreter:
             "Check that the name refers to a function.",
         )
 
+    def _evaluate_attribute(self, expression: Attribute) -> object:
+        target = self._evaluate(expression.target)
+        if isinstance(target, AgentInstance):
+            self._require_instance_accessible(target, expression.line, expression.column, expression.name)
+            try:
+                return target.field_value(expression.name)
+            except KeyError:
+                raise SproutRuntimeError(
+                    expression.line,
+                    expression.column,
+                    f"Agent instance {target.error_name} has no field `{expression.name}`.",
+                    f"Its type `{target.type_name}` defines: {', '.join(target.fields) or 'no fields'}.",
+                ) from None
+        if isinstance(target, WorldRuntime):
+            if expression.name == "width":
+                return float(target.width)
+            if expression.name == "height":
+                return float(target.height)
+            raise SproutRuntimeError(
+                expression.line,
+                expression.column,
+                f"World `{target.name}` has no readable field `{expression.name}`.",
+                "Readable world fields in v0.4 are `width` and `height`.",
+            )
+        raise SproutRuntimeError(
+            expression.line,
+            expression.column,
+            f"Cannot read field `{expression.name}` from {type_name(target)}.",
+            "Use dotted field access only with agent instances or the current `world` inside behavior.",
+        )
+
     def _evaluate_index(self, expression: Index) -> object:
         collection = self._evaluate(expression.collection)
         if type(collection) is not list:
             raise SproutRuntimeError(
                 expression.line,
                 expression.column,
-                "Indexing only works with lists in Sprout v0.3.",
+                "Indexing only works with lists in Sprout v0.4.",
                 f"Found: {type_name(collection)}.",
             )
         index_value = self._evaluate(expression.index)
@@ -924,7 +1398,7 @@ class Interpreter:
             raise SproutRuntimeError(
                 expression.line,
                 expression.column,
-                "Lists can only be compared with `==` or `!=` in Sprout v0.3.",
+                "Lists can only be compared with `==` or `!=` in Sprout v0.4.",
             )
         if type(left) is not type(right):
             raise SproutRuntimeError(
@@ -937,7 +1411,7 @@ class Interpreter:
             raise SproutRuntimeError(
                 expression.line,
                 expression.column,
-                "Ordering comparisons only work with numbers in Sprout v0.3.",
+                "Ordering comparisons only work with numbers in Sprout v0.4.",
                 f"Found: {type_name(left)}.",
             )
         if expression.operator_type == TokenType.LESS:
@@ -951,6 +1425,12 @@ class Interpreter:
         raise AssertionError(f"Unhandled ordering operator: {expression.operator_type}")
 
     def _equals(self, left: object, right: object) -> bool:
+        if isinstance(left, AgentInstance) and right is NOTHING:
+            return left.removed
+        if left is NOTHING and isinstance(right, AgentInstance):
+            return right.removed
+        if isinstance(left, AgentInstance) and isinstance(right, AgentInstance):
+            return left.runtime_id == right.runtime_id
         if type(left) is list and type(right) is list:
             if len(left) != len(right):
                 return False
@@ -1146,7 +1626,7 @@ class Interpreter:
             raise SproutRuntimeError(
                 line,
                 column,
-                "Negative list indexes are not supported in Sprout v0.3.",
+                "Negative list indexes are not supported in Sprout v0.4.",
                 "Use an index from 0 up to length(list) - 1.",
             )
         return int(value)
@@ -1154,6 +1634,14 @@ class Interpreter:
     def _lookup(self, name: str, line: int, column: int) -> object:
         if self.locals is not None and name in self.locals:
             return self.locals[name]
+        if self._current_instance is not None:
+            if name == "self":
+                return self._current_instance
+            if name == "world":
+                return self._current_instance.world
+            if name in self._current_instance.fields:
+                self._require_instance_accessible(self._current_instance, line, column, name)
+                return self._current_instance.field_value(name)
         if name in self.globals:
             return self.globals[name]
         raise SproutRuntimeError(
@@ -1163,9 +1651,19 @@ class Interpreter:
             f"Check the spelling, or define it first with `{name} = ...`.",
         )
 
-    def _assign(self, name: str, value: object) -> None:
+    def _assign(self, name: str, value: object, line: int, column: int) -> None:
         if self.locals is not None:
             self.locals[name] = value
+        elif self._current_instance is not None and name in self._current_instance.fields:
+            self._require_instance_accessible(self._current_instance, line, column, name)
+            if name in COORDINATE_FIELDS:
+                raise SproutRuntimeError(
+                    line,
+                    column,
+                    f"Cannot assign `{name}` directly inside agent behavior.",
+                    "Use `move self by dx, dy` or `move self to x, y` so bounds and collisions are checked.",
+                )
+            self._current_instance.set_field_value(name, clone_value(value))
         else:
             self.globals[name] = value
 
@@ -1178,6 +1676,6 @@ class Interpreter:
         raise SproutRuntimeError(
             line,
             column,
-            "Functions are not ordinary values in Sprout v0.3.",
+            "Functions are not ordinary values in Sprout v0.4.",
             "Call the function by name instead of storing, printing, returning, or putting it in a list.",
         )

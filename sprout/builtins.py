@@ -71,6 +71,8 @@ def type_name(value: object) -> str:
         return "text"
     if type(value) is list:
         return "list"
+    if hasattr(value, "sprout_type_name"):
+        return str(getattr(value, "sprout_type_name"))
     if isinstance(value, BuiltinFunction) or hasattr(value, "signature"):
         return "function"
     return type(value).__name__
@@ -89,7 +91,8 @@ def format_value(value: object) -> str:
         return value
     if type(value) is list:
         return "[" + ", ".join(format_value(item) for item in value) + "]"
+    if hasattr(value, "sprout_format_value"):
+        return str(getattr(value, "sprout_format_value"))
     if isinstance(value, BuiltinFunction) or hasattr(value, "signature"):
         return "<function>"
     return str(value)
-

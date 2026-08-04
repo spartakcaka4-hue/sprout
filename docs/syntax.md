@@ -1,4 +1,4 @@
-# Sprout v0.3 Syntax
+# Sprout v0.4 Syntax
 
 Sprout programs are plain text files with the `.spr` extension.
 
@@ -217,9 +217,9 @@ printing, returning, or putting them in lists.
 
 ## Tick Controls
 
-Sprout v0.3 includes a tick-control system. A tick is one complete simulation
-step. In v0.3, ticks only advance `tick.number`; no world or movement behavior
-runs yet.
+Sprout includes a tick-control system. A tick is one complete simulation step.
+In v0.4, ticks run live agent `every tick:` behavior first, then increment
+`tick.number` after the complete step finishes.
 
 Run one manual tick:
 
@@ -287,12 +287,13 @@ tick.break when tick.number >= 20
 
 `tick.break at N` pauses automatic ticking after tick `N` completes.
 `tick.break when condition` checks a Boolean condition after each automatic
-tick. Breakpoints do not stop manual `tick.next(...)` calls in v0.3.
+tick. Breakpoints do not stop manual `tick.next(...)` calls.
 
 ## Agent Declarations
 
-Sprout v0.3 includes metadata-only agent declarations. Agents do not spawn, move,
-render, act, mutate, or simulate yet.
+Agent declarations define reusable agent types. In v0.4, those types can be
+spawned as live instances, and an optional `every tick:` block runs while each
+instance is active.
 
 Use built-in presets to add common fields:
 
@@ -371,9 +372,26 @@ biology.lifecycle      # age, lifespan, alive
 The newer movement presets also store allowed environment metadata. They do not
 perform movement calculations.
 
+Preset fields have spawn defaults, copied independently into each live
+instance:
+
+| Preset | Defaults |
+|---|---|
+| `position.basic` | `x = 0`, `y = 0` |
+| `position.cell` | `row = 0`, `column = 0` |
+| `position.continuous` | `x = 0`, `y = 0` |
+| `movement.directional`, `movement.ground`, `movement.water`, `movement.amphibious` | `speed = 1`, `direction = 0` |
+| `movement.velocity` | `velocity_x = 0`, `velocity_y = 0` |
+| `movement.grid` | `grid_x = 0`, `grid_y = 0` |
+| `movement.air`, `movement.aerial_ground` | `speed = 1`, `direction = 0`, `altitude = 0` |
+| `movement.passive` | `direction = 0` |
+| `biology.energy` | `energy = 100`, `alive = true` |
+| `biology.health` | `health = 100`, `max_health = 100`, `alive = true` |
+| `biology.lifecycle` | `age = 0`, `lifespan = 100`, `alive = true` |
+
 ## Environments And Placement
 
-Environment declarations are metadata-only in v0.3:
+Environment declarations define named environment types:
 
 ```text
 environment Land:
@@ -433,9 +451,8 @@ environments as stationary metadata, with active movement false.
 
 ## Worlds
 
-World declarations are metadata-only in v0.3. They define bounded 2D space and
-one default environment. They do not render anything, generate terrain, spawn
-agents, or run movement.
+World declarations define bounded 2D runtime spaces with one default
+environment. They do not render anything or generate terrain yet.
 
 Continuous world:
 
@@ -483,7 +500,7 @@ print(Meadow)
 is still an undefined-variable error unless a normal variable named `Meadow`
 was assigned separately.
 
-## World Placement
+## World Placement Metadata
 
 Place an agent type in a world with coordinates:
 
@@ -503,8 +520,8 @@ world Meadow:
 place Blob in Meadow at 20, 35
 ```
 
-This stores world-placement metadata only. It does not create a live agent
-instance.
+This stores world-placement metadata only. To create a live instance, use
+`spawn`.
 
 Coordinate rules:
 
@@ -529,6 +546,71 @@ placement. Sprout does not infer or convert coordinates automatically.
 World placement also validates the agent movement preset against the world's
 default environment type, using the same compatibility rules as
 `place Agent in Environment`.
+
+## Live Instances, Movement, And Removal
+
+Spawn creates a live agent instance in a world:
+
+```text
+spawn Banana as bob in Kitchen at 0, 4:
+    energy = 3
+```
+
+`as name` is optional. A named instance can be read later with dotted field
+access:
+
+```text
+print(bob.energy)
+print(bob exists)
+```
+
+Spawn override blocks may only set fields that already exist on the agent
+type. Position fields such as `x`, `y`, `row`, and `column` come from
+`at x, y`, not from overrides.
+
+Agents can define tick behavior:
+
+```text
+agent Banana uses:
+    position.cell
+    movement.ground
+    biology.energy
+
+    every tick:
+        energy = energy - 1
+        move self by 1, 0
+
+        if energy <= 0:
+            remove self
+```
+
+Inside `every tick:`, bare field names read and write the current instance.
+`self` is the current instance, and `world.width` / `world.height` read the
+current world dimensions.
+
+Movement validates the whole action before applying it:
+
+- The target instance must exist and be active.
+- The movement preset must allow active movement.
+- Grid movement uses whole-number coordinates.
+- The target must be inside the world bounds.
+- The movement preset must be compatible with the world's environment.
+- Grid worlds allow only one active agent per cell. Continuous worlds allow
+  overlap for now.
+
+`move name by dx, dy` moves relative to the current position.
+`move name to x, y` moves to an absolute position.
+
+`remove name` or `remove self` marks an instance inactive immediately and frees
+its grid cell. A removed instance does not update again. `name exists` returns
+`false` for a removed instance, while reading a removed instance's fields is a
+runtime error.
+
+Tick updates are sequential and deterministic. Each tick snapshots the active
+agents that exist at tick start, then visits each once in spawn order. Each
+agent sees the current live world state, including changes made by earlier
+agents in the same tick. Agents spawned during a tick begin updating on the
+next tick.
 
 ## Operators
 
@@ -563,9 +645,8 @@ Ordering comparisons work with Numbers only.
 
 ## Still Out Of Scope
 
-Sprout v0.3 does not include rendering, tiles, terrain generation, multiple
+Sprout v0.4 does not include rendering, tiles, terrain generation, multiple
 regions, overlapping environments, world transitions, pathfinding, steering
-behaviors, collision physics, animation, GUI rendering, gravity, actual
-movement calculations, live agent instances, spawning, mutation, automatic
-agent updates during ticks, or commands such as `move`, `walk`, `swim`, `fly`,
-`seek`, `flee`, or `wander`.
+behaviors such as seek/flee/wander, collision physics beyond one grid agent per
+cell, animation, GUI rendering, gravity, mutation, reproduction, food systems,
+combat, perception queries, or edge wrapping/bouncing.
