@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from math import hypot
+from math import floor, hypot
 
 from .agent_presets import AgentDefinition, AgentPreset, WorldDefinition
 from .builtins import NOTHING
@@ -18,13 +18,15 @@ def clone_value(value: object) -> object:
     return value
 
 
-@dataclass
+@dataclass(slots=True)
 class WorldRuntime:
     definition: WorldDefinition
     terrain_layer: dict[object, object] = field(default_factory=dict)
     object_layer: dict[object, object] = field(default_factory=dict)
     agent_layer: dict[object, object] = field(default_factory=dict)
     agents: dict[int, "AgentInstance"] = field(default_factory=dict)
+    spatial_bucket_size: float = 1.0
+    spatial_buckets: dict[tuple[int, int], set[int]] = field(default_factory=dict)
 
     @property
     def name(self) -> str:
@@ -69,33 +71,47 @@ class WorldRuntime:
     def occupancy_key(self, x: float, y: float) -> tuple[int, int]:
         return (int(x), int(y))
 
+    def spatial_bucket_key(self, x: float, y: float) -> tuple[int, int]:
+        return (floor(x / self.spatial_bucket_size), floor(y / self.spatial_bucket_size))
+
     def add_agent(self, instance: "AgentInstance") -> None:
         self.agents[instance.runtime_id] = instance
-        if self.space_type == "grid":
-            self.agent_layer[self.occupancy_key(instance.x, instance.y)] = instance.runtime_id
+        if self.definition.space_type == "grid":
+            self.agent_layer[(int(instance.x), int(instance.y))] = instance.runtime_id
         else:
             self.agent_layer[instance.runtime_id] = (instance.x, instance.y)
+            self.spatial_buckets.setdefault(
+                self.spatial_bucket_key(instance.x, instance.y),
+                set(),
+            ).add(instance.runtime_id)
 
     def remove_agent_from_layer(self, instance: "AgentInstance") -> None:
-        if self.space_type == "grid":
-            key = self.occupancy_key(instance.x, instance.y)
+        if self.definition.space_type == "grid":
+            key = (int(instance.x), int(instance.y))
             if self.agent_layer.get(key) == instance.runtime_id:
                 del self.agent_layer[key]
         else:
             self.agent_layer.pop(instance.runtime_id, None)
+            key = self.spatial_bucket_key(instance.x, instance.y)
+            bucket = self.spatial_buckets.get(key)
+            if bucket is not None:
+                bucket.discard(instance.runtime_id)
+                if not bucket:
+                    del self.spatial_buckets[key]
 
     def update_agent_position(self, instance: "AgentInstance", x: float, y: float) -> None:
         self.remove_agent_from_layer(instance)
         instance.set_position(x, y)
-        if self.space_type == "grid":
-            self.agent_layer[self.occupancy_key(x, y)] = instance.runtime_id
+        if self.definition.space_type == "grid":
+            self.agent_layer[(int(x), int(y))] = instance.runtime_id
         else:
             self.agent_layer[instance.runtime_id] = (x, y)
+            self.spatial_buckets.setdefault(self.spatial_bucket_key(x, y), set()).add(instance.runtime_id)
 
     def active_agent_at(self, x: float, y: float, *, ignore_id: int | None = None) -> "AgentInstance | None":
-        if self.space_type != "grid":
+        if self.definition.space_type != "grid":
             return None
-        instance_id = self.agent_layer.get(self.occupancy_key(x, y))
+        instance_id = self.agent_layer.get((int(x), int(y)))
         if instance_id is None or instance_id == ignore_id:
             return None
         instance = self.agents.get(instance_id)
@@ -103,8 +119,29 @@ class WorldRuntime:
             return None
         return instance
 
+    def nearby_agents(self, x: float, y: float, radius: float) -> list["AgentInstance"]:
+        if self.definition.space_type == "grid":
+            return []
+        radius_squared = radius * radius
+        min_bucket_x = floor((x - radius) / self.spatial_bucket_size)
+        max_bucket_x = floor((x + radius) / self.spatial_bucket_size)
+        min_bucket_y = floor((y - radius) / self.spatial_bucket_size)
+        max_bucket_y = floor((y + radius) / self.spatial_bucket_size)
+        found: list[AgentInstance] = []
+        for bucket_x in range(min_bucket_x, max_bucket_x + 1):
+            for bucket_y in range(min_bucket_y, max_bucket_y + 1):
+                for instance_id in self.spatial_buckets.get((bucket_x, bucket_y), ()):
+                    instance = self.agents.get(instance_id)
+                    if instance is None or not instance.active or instance.removed:
+                        continue
+                    dx = instance.x - x
+                    dy = instance.y - y
+                    if dx * dx + dy * dy <= radius_squared:
+                        found.append(instance)
+        return found
 
-@dataclass
+
+@dataclass(slots=True)
 class AgentInstance:
     runtime_id: int
     definition: AgentDefinition

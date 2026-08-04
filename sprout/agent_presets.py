@@ -36,6 +36,10 @@ class AgentDefinition:
     selected_presets: dict[str, AgentPreset]
     fields: dict[str, AgentFieldDefinition]
     every_tick_body: list[object] | None
+    field_defaults: dict[str, object]
+    movement_preset: AgentPreset
+    position_preset: AgentPreset
+    has_tick_behavior: bool
     line: int
     column: int
 

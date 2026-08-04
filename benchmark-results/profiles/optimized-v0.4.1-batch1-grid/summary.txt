@@ -1,0 +1,51 @@
+# grid_move_10k_agents_20_ticks
+extra={'tick_number': 20}
+         9400230 function calls (9200230 primitive calls) in 12.609 seconds
+
+   Ordered by: cumulative time
+   List reduced from 42 to 40 due to restriction <40>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   12.609   12.609 benchmark_runtime.py:197(run)
+        1    0.000    0.000   12.609   12.609 interpreter.py:129(run)
+ 200001/1    0.960    0.000   12.609   12.609 interpreter.py:136(_execute)
+        1    0.005    0.005   12.609   12.609 interpreter.py:937(_execute_tick_statement)
+       20    0.390    0.020   12.604    0.630 interpreter.py:1094(_execute_one_complete_tick)
+   200000    0.272    0.000   12.131    0.000 interpreter.py:1118(_execute_agent_tick_body)
+   200000    0.304    0.000   11.859    0.000 interpreter.py:1168(_execute_block)
+   200000    3.251    0.000    9.984    0.000 interpreter.py:624(_execute_move_statement)
+   200000    0.652    0.000    1.581    0.000 runtime.py:102(update_agent_position)
+   800000    0.728    0.000    1.185    0.000 interpreter.py:725(_require_coordinate_compatible)
+  2200017    0.966    0.000    0.966    0.000 {built-in method builtins.isinstance}
+   400000    0.394    0.000    0.962    0.000 interpreter.py:1700(_reject_function_value)
+   200000    0.262    0.000    0.875    0.000 interpreter.py:811(_validate_move_occupancy)
+   200000    0.502    0.000    0.674    0.000 runtime.py:88(remove_agent_from_layer)
+   200000    0.414    0.000    0.614    0.000 runtime.py:111(active_agent_at)
+   200000    0.437    0.000    0.575    0.000 interpreter.py:771(_validate_move_bounds)
+   400000    0.355    0.000    0.568    0.000 interpreter.py:1697(_is_function_value)
+   400001    0.344    0.000    0.486    0.000 interpreter.py:1174(_evaluate)
+   200000    0.302    0.000    0.481    0.000 runtime.py:209(record_move)
+   800001    0.458    0.000    0.458    0.000 {method 'is_integer' of 'float' objects}
+   400000    0.372    0.000    0.372    0.000 {method 'get' of 'dict' objects}
+   400000    0.310    0.000    0.310    0.000 interpreter.py:715(_require_movement_number)
+   200000    0.255    0.000    0.255    0.000 runtime.py:181(set_position)
+   200000    0.179    0.000    0.179    0.000 {built-in method math.hypot}
+   200000    0.099    0.000    0.099    0.000 interpreter.py:662(_resolve_instance_target)
+   200000    0.092    0.000    0.092    0.000 interpreter.py:689(_require_active_instance)
+   200000    0.086    0.000    0.086    0.000 interpreter.py:742(_validate_agent_can_move)
+   200000    0.083    0.000    0.083    0.000 runtime.py:212(reset_tick_movement)
+   200000    0.070    0.000    0.070    0.000 runtime.py:39(height)
+   200000    0.068    0.000    0.068    0.000 runtime.py:35(width)
+       20    0.000    0.000    0.000    0.000 threading.py:438(notify_all)
+       21    0.000    0.000    0.000    0.000 threading.py:313(__enter__)
+       21    0.000    0.000    0.000    0.000 threading.py:316(__exit__)
+       20    0.000    0.000    0.000    0.000 threading.py:408(notify)
+       21    0.000    0.000    0.000    0.000 {method '__enter__' of '_thread.RLock' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+       20    0.000    0.000    0.000    0.000 {built-in method builtins.len}
+       21    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.RLock' objects}
+       20    0.000    0.000    0.000    0.000 {method '_is_owned' of '_thread.RLock' objects}
+       20    0.000    0.000    0.000    0.000 interpreter.py:1131(_apply_pending_spawns)
+
+
+

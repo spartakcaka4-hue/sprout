@@ -1,11 +1,11 @@
-# Sprout v0.4
+# Sprout v0.4.1
 
 Sprout is a small programming language designed to reduce boilerplate in
 agent-based and simulation-focused projects.
 
 It is implemented as a real lexer, parser, AST, and tree-walking interpreter
-in Python. Sprout is experimental and not production-ready. The current v0.4
-milestone turns agent/world metadata into executable runtime state.
+in Python. Sprout is experimental and not production-ready. The current
+v0.4.1 milestone is a runtime performance pass over v0.4 executable worlds.
 
 ## Overview
 
@@ -177,7 +177,7 @@ snapshots, ticks, agents, environments, worlds, and placement validation.
 
 ## Project Status
 
-Sprout v0.4 is an experimental milestone. The repository is suitable for
+Sprout v0.4.1 is an experimental milestone. The repository is suitable for
 reading, testing, and language-design iteration, but the language is not stable
 and should not be treated as production-ready.
 
@@ -238,6 +238,7 @@ Sprout is distributed under the license in `LICENSE`.
 
 - `docs/syntax.md` is the compact language guide.
 - `docs/language-spec.md` is the detailed v0.4 reference.
+- `docs/performance-v0.4.1.md` records the v0.4.1 runtime benchmark work.
 - `docs/examples.md` explains example programs.
 - `docs/errors.md` summarizes common error categories.
 - `docs/decisions.md` records language-design decisions.

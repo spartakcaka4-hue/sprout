@@ -1,0 +1,270 @@
+# idle_1k_agents_1k_ticks
+extra={'tick_number': 1000}
+         1011030 function calls in 0.647 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.647    0.647 benchmark_runtime.py:197(run)
+        1    0.000    0.000    0.647    0.647 interpreter.py:127(run)
+        1    0.000    0.000    0.647    0.647 interpreter.py:134(_execute)
+        1    0.005    0.005    0.647    0.647 interpreter.py:912(_execute_tick_statement)
+     1000    0.463    0.000    0.641    0.001 interpreter.py:1069(_execute_one_complete_tick)
+  1000000    0.172    0.000    0.172    0.000 runtime.py:175(reset_tick_movement)
+     1000    0.001    0.000    0.003    0.000 threading.py:438(notify_all)
+     1001    0.001    0.000    0.002    0.000 threading.py:313(__enter__)
+     1001    0.001    0.000    0.001    0.000 threading.py:316(__exit__)
+     1001    0.001    0.000    0.001    0.000 {method '__enter__' of '_thread.RLock' objects}
+     1000    0.001    0.000    0.001    0.000 threading.py:408(notify)
+        1    0.001    0.001    0.001    0.001 interpreter.py:1502(_require_tick_count)
+     1000    0.001    0.000    0.001    0.000 {built-in method builtins.len}
+     1000    0.000    0.000    0.000    0.000 interpreter.py:1104(_apply_pending_spawns)
+     1000    0.000    0.000    0.000    0.000 {method '_is_owned' of '_thread.RLock' objects}
+     1001    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.RLock' objects}
+     1000    0.000    0.000    0.000    0.000 interpreter.py:806(_cleanup_removed_instances)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+       17    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}
+        1    0.000    0.000    0.000    0.000 {method 'is_integer' of 'float' objects}
+        1    0.000    0.000    0.000    0.000 interpreter.py:122(tick_number)
+        1    0.000    0.000    0.000    0.000 interpreter.py:1147(_evaluate)
+
+
+
+# idle_10k_agents_100_ticks
+extra={'tick_number': 100}
+         1001130 function calls in 0.696 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.696    0.696 benchmark_runtime.py:197(run)
+        1    0.000    0.000    0.696    0.696 interpreter.py:127(run)
+        1    0.000    0.000    0.696    0.696 interpreter.py:134(_execute)
+        1    0.012    0.012    0.696    0.696 interpreter.py:912(_execute_tick_statement)
+      100    0.498    0.005    0.685    0.007 interpreter.py:1069(_execute_one_complete_tick)
+  1000000    0.186    0.000    0.186    0.000 runtime.py:175(reset_tick_movement)
+      100    0.000    0.000    0.001    0.000 threading.py:438(notify_all)
+      101    0.000    0.000    0.000    0.000 threading.py:313(__enter__)
+      101    0.000    0.000    0.000    0.000 {method '__enter__' of '_thread.RLock' objects}
+      101    0.000    0.000    0.000    0.000 threading.py:316(__exit__)
+      100    0.000    0.000    0.000    0.000 threading.py:408(notify)
+      100    0.000    0.000    0.000    0.000 {built-in method builtins.len}
+      100    0.000    0.000    0.000    0.000 interpreter.py:1104(_apply_pending_spawns)
+      101    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.RLock' objects}
+      100    0.000    0.000    0.000    0.000 {method '_is_owned' of '_thread.RLock' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+      100    0.000    0.000    0.000    0.000 interpreter.py:806(_cleanup_removed_instances)
+        1    0.000    0.000    0.000    0.000 interpreter.py:1502(_require_tick_count)
+       17    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}
+        1    0.000    0.000    0.000    0.000 interpreter.py:122(tick_number)
+        1    0.000    0.000    0.000    0.000 {method 'is_integer' of 'float' objects}
+        1    0.000    0.000    0.000    0.000 interpreter.py:1147(_evaluate)
+
+
+
+# field_update_10k_agents_100_ticks
+extra={'tick_number': 100}
+         38001130 function calls (35001130 primitive calls) in 23.007 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   23.007   23.007 benchmark_runtime.py:197(run)
+        1    0.000    0.000   23.007   23.007 interpreter.py:127(run)
+1000001/1    4.029    0.000   23.007   23.007 interpreter.py:134(_execute)
+        1    0.018    0.018   23.007   23.007 interpreter.py:912(_execute_tick_statement)
+      100    0.964    0.010   22.989    0.230 interpreter.py:1069(_execute_one_complete_tick)
+  1000000    1.063    0.000   21.844    0.000 interpreter.py:1092(_execute_agent_tick_body)
+  1000000    0.752    0.000   20.577    0.000 interpreter.py:1141(_execute_block)
+3000001/1000001    3.747    0.000    9.766    0.000 interpreter.py:1147(_evaluate)
+  1000000    1.596    0.000    6.303    0.000 interpreter.py:1198(_evaluate_binary)
+ 19000017    4.245    0.000    4.245    0.000 {built-in method builtins.isinstance}
+  1000000    1.700    0.000    2.624    0.000 interpreter.py:1654(_assign)
+  1000000    1.312    0.000    1.858    0.000 interpreter.py:1634(_lookup)
+  1000000    0.569    0.000    1.388    0.000 interpreter.py:1673(_reject_function_value)
+  1000000    0.515    0.000    0.820    0.000 interpreter.py:1670(_is_function_value)
+  1000000    0.643    0.000    0.643    0.000 interpreter.py:1367(_plus)
+  1000000    0.431    0.000    0.431    0.000 runtime.py:13(clone_value)
+  2000000    0.416    0.000    0.416    0.000 interpreter.py:677(_require_instance_accessible)
+  1000000    0.335    0.000    0.335    0.000 runtime.py:156(field_value)
+  1000000    0.288    0.000    0.288    0.000 runtime.py:169(set_field_value)
+  1000100    0.204    0.000    0.204    0.000 interpreter.py:806(_cleanup_removed_instances)
+  1000000    0.180    0.000    0.180    0.000 runtime.py:175(reset_tick_movement)
+      100    0.000    0.000    0.001    0.000 threading.py:438(notify_all)
+      101    0.000    0.000    0.001    0.000 threading.py:313(__enter__)
+      101    0.000    0.000    0.000    0.000 {method '__enter__' of '_thread.RLock' objects}
+      101    0.000    0.000    0.000    0.000 threading.py:316(__exit__)
+      100    0.000    0.000    0.000    0.000 threading.py:408(notify)
+      100    0.000    0.000    0.000    0.000 {built-in method builtins.len}
+      101    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.RLock' objects}
+      100    0.000    0.000    0.000    0.000 {method '_is_owned' of '_thread.RLock' objects}
+      100    0.000    0.000    0.000    0.000 interpreter.py:1104(_apply_pending_spawns)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.000    0.000 interpreter.py:1502(_require_tick_count)
+        1    0.000    0.000    0.000    0.000 interpreter.py:122(tick_number)
+        1    0.000    0.000    0.000    0.000 {method 'is_integer' of 'float' objects}
+
+
+
+# grid_move_10k_agents_20_ticks
+extra={'tick_number': 20}
+         12800250 function calls (12600250 primitive calls) in 8.648 seconds
+
+   Ordered by: cumulative time
+   List reduced from 48 to 40 due to restriction <40>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    8.648    8.648 benchmark_runtime.py:197(run)
+        1    0.000    0.000    8.648    8.648 interpreter.py:127(run)
+ 200001/1    0.504    0.000    8.648    8.648 interpreter.py:134(_execute)
+        1    0.005    0.005    8.648    8.648 interpreter.py:912(_execute_tick_statement)
+       20    0.192    0.010    8.643    0.432 interpreter.py:1069(_execute_one_complete_tick)
+   200000    0.220    0.000    8.412    0.000 interpreter.py:1092(_execute_agent_tick_body)
+   200000    0.153    0.000    8.151    0.000 interpreter.py:1141(_execute_block)
+   200000    2.030    0.000    7.187    0.000 interpreter.py:599(_execute_move_statement)
+   200000    0.378    0.000    1.156    0.000 runtime.py:87(update_agent_position)
+   800000    0.585    0.000    0.939    0.000 interpreter.py:703(_require_coordinate_compatible)
+   400000    0.567    0.000    0.675    0.000 builtins.py:81(format_value)
+   200000    0.146    0.000    0.659    0.000 interpreter.py:780(_validate_move_occupancy)
+   200000    0.291    0.000    0.521    0.000 runtime.py:79(remove_agent_from_layer)
+   200000    0.256    0.000    0.512    0.000 runtime.py:95(active_agent_at)
+   400000    0.210    0.000    0.507    0.000 interpreter.py:1673(_reject_function_value)
+  2200017    0.486    0.000    0.486    0.000 {built-in method builtins.isinstance}
+   600000    0.330    0.000    0.330    0.000 runtime.py:69(occupancy_key)
+  1200001    0.325    0.000    0.325    0.000 {method 'is_integer' of 'float' objects}
+   400000    0.191    0.000    0.297    0.000 interpreter.py:1670(_is_function_value)
+   200000    0.217    0.000    0.293    0.000 interpreter.py:740(_validate_move_bounds)
+   400001    0.183    0.000    0.255    0.000 interpreter.py:1147(_evaluate)
+  1400000    0.230    0.000    0.230    0.000 runtime.py:41(space_type)
+   200000    0.144    0.000    0.220    0.000 runtime.py:172(record_move)
+   400000    0.199    0.000    0.199    0.000 {method 'get' of 'dict' objects}
+   400000    0.159    0.000    0.159    0.000 interpreter.py:693(_require_movement_number)
+   200000    0.117    0.000    0.151    0.000 interpreter.py:764(_validate_runtime_movement_environment)
+   200000    0.120    0.000    0.120    0.000 runtime.py:144(set_position)
+   200000    0.075    0.000    0.075    0.000 {built-in method math.hypot}
+   200000    0.052    0.000    0.052    0.000 interpreter.py:640(_resolve_instance_target)
+   200000    0.047    0.000    0.047    0.000 interpreter.py:667(_require_active_instance)
+   200000    0.046    0.000    0.046    0.000 interpreter.py:720(_validate_agent_can_move)
+   200020    0.041    0.000    0.041    0.000 interpreter.py:806(_cleanup_removed_instances)
+   200000    0.040    0.000    0.040    0.000 runtime.py:37(height)
+   200000    0.038    0.000    0.038    0.000 runtime.py:175(reset_tick_movement)
+   200000    0.036    0.000    0.036    0.000 runtime.py:33(width)
+   200000    0.034    0.000    0.034    0.000 runtime.py:49(environment_type)
+       20    0.000    0.000    0.000    0.000 threading.py:438(notify_all)
+       21    0.000    0.000    0.000    0.000 threading.py:313(__enter__)
+       21    0.000    0.000    0.000    0.000 {method '__enter__' of '_thread.RLock' objects}
+       21    0.000    0.000    0.000    0.000 threading.py:316(__exit__)
+
+
+
+# mass_spawn_20k_agents
+extra={'tick_number': 0}
+         1340073 function calls in 1.136 seconds
+
+   Ordered by: cumulative time
+   List reduced from 49 to 40 due to restriction <40>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    1.208    1.208 benchmark_runtime.py:179(run)
+        1    0.011    0.011    1.208    1.208 interpreter.py:127(run)
+    20003    0.058    0.000    1.197    0.000 interpreter.py:134(_execute)
+    20000    0.026    0.000    1.108    0.000 interpreter.py:454(_execute_spawn_statement)
+    20000    0.200    0.000    0.672    0.000 interpreter.py:461(_prepare_spawn)
+    20000    0.192    0.000    0.411    0.000 interpreter.py:541(_apply_spawn)
+    40000    0.027    0.000    0.135    0.000 interpreter.py:578(_validate_spawn_cell_available)
+    40000    0.054    0.000    0.108    0.000 runtime.py:95(active_agent_at)
+    40000    0.071    0.000    0.101    0.000 interpreter.py:1577(_require_world_coordinate)
+    40002    0.030    0.000    0.066    0.000 interpreter.py:1673(_reject_function_value)
+    20000    0.040    0.000    0.062    0.000 interpreter.py:843(_validate_position_world_compatibility)
+   180018    0.061    0.000    0.061    0.000 {method 'get' of 'dict' objects}
+   200010    0.051    0.000    0.051    0.000 {built-in method builtins.isinstance}
+    20000    0.027    0.000    0.044    0.000 runtime.py:72(add_agent)
+    60000    0.042    0.000    0.042    0.000 runtime.py:69(occupancy_key)
+    40002    0.023    0.000    0.036    0.000 interpreter.py:1670(_is_function_value)
+    40000    0.023    0.000    0.034    0.000 interpreter.py:819(_position_preset_for_agent)
+    40000    0.022    0.000    0.033    0.000 interpreter.py:813(_movement_preset_for_agent)
+    80000    0.032    0.000    0.032    0.000 runtime.py:13(clone_value)
+    40002    0.023    0.000    0.031    0.000 interpreter.py:1147(_evaluate)
+   120000    0.023    0.000    0.023    0.000 runtime.py:41(space_type)
+    40000    0.015    0.000    0.015    0.000 {method 'items' of 'dict' objects}
+    40002    0.015    0.000    0.015    0.000 {method 'is_integer' of 'float' objects}
+    20000    0.013    0.000    0.013    0.000 <string>:2(__init__)
+    20000    0.013    0.000    0.013    0.000 runtime.py:144(set_position)
+    20007    0.011    0.000    0.011    0.000 agent_presets.py:19(full_name)
+    20000    0.008    0.000    0.008    0.000 interpreter.py:508(_evaluate_spawn_overrides)
+    20000    0.007    0.000    0.007    0.000 interpreter.py:825(_validate_movement_environment_compatibility)
+    20000    0.007    0.000    0.007    0.000 {method 'append' of 'list' objects}
+    20000    0.004    0.000    0.004    0.000 runtime.py:37(height)
+    20000    0.004    0.000    0.004    0.000 runtime.py:33(width)
+    20000    0.004    0.000    0.004    0.000 runtime.py:49(environment_type)
+        1    0.000    0.000    0.000    0.000 interpreter.py:97(__init__)
+        1    0.000    0.000    0.000    0.000 interpreter.py:228(_execute_agent_declaration)
+        1    0.000    0.000    0.000    0.000 interpreter.py:307(_execute_world_declaration)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.000    0.000 threading.py:290(__init__)
+        1    0.000    0.000    0.000    0.000 interpreter.py:122(tick_number)
+        1    0.000    0.000    0.000    0.000 builtins.py:27(make_builtins)
+        3    0.000    0.000    0.000    0.000 interpreter.py:867(_resolve_agent_preset)
+
+
+
+# mass_remove_20k_agents
+extra={'start_live_agents': 20000, 'remaining_live_agents': 20000}
+         400004 function calls in 0.267 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.267    0.267 benchmark_runtime.py:215(run)
+        1    0.009    0.009    0.267    0.267 interpreter.py:127(run)
+    20000    0.059    0.000    0.258    0.000 interpreter.py:134(_execute)
+    20000    0.032    0.000    0.161    0.000 interpreter.py:635(_execute_remove_statement)
+    20000    0.023    0.000    0.086    0.000 interpreter.py:798(_remove_instance)
+    20000    0.030    0.000    0.058    0.000 runtime.py:79(remove_agent_from_layer)
+   180000    0.042    0.000    0.042    0.000 {built-in method builtins.isinstance}
+    20000    0.018    0.000    0.038    0.000 interpreter.py:640(_resolve_instance_target)
+    20000    0.016    0.000    0.016    0.000 interpreter.py:1634(_lookup)
+    20000    0.013    0.000    0.013    0.000 runtime.py:69(occupancy_key)
+    20000    0.010    0.000    0.010    0.000 {method 'get' of 'dict' objects}
+    20000    0.006    0.000    0.006    0.000 {method 'append' of 'list' objects}
+    20000    0.005    0.000    0.005    0.000 interpreter.py:667(_require_active_instance)
+    20000    0.004    0.000    0.004    0.000 runtime.py:41(space_type)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.len}
+
+
+
+# occupied_cell_lookup_50k
+extra={'lookups': 50000, 'hits': 50000}
+         250002 function calls in 0.157 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.031    0.031    0.157    0.157 benchmark_runtime.py:233(run)
+    50000    0.065    0.000    0.125    0.000 runtime.py:95(active_agent_at)
+   100000    0.029    0.000    0.029    0.000 {method 'get' of 'dict' objects}
+    50000    0.024    0.000    0.024    0.000 runtime.py:69(occupancy_key)
+    50000    0.007    0.000    0.007    0.000 runtime.py:41(space_type)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+
+
+
+# nearby_agent_lookup_200
+extra={'lookups': 200, 'total_found': 1490}
+         2492 function calls in 0.330 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.001    0.001    0.330    0.330 benchmark_runtime.py:274(run)
+      200    0.000    0.000    0.329    0.002 benchmark_runtime.py:258(nearby_agents)
+      200    0.327    0.002    0.328    0.002 benchmark_runtime.py:245(naive_nearby_agents)
+     1490    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+      200    0.000    0.000    0.000    0.000 {method 'values' of 'dict' objects}
+      200    0.000    0.000    0.000    0.000 {built-in method builtins.len}
+      200    0.000    0.000    0.000    0.000 {built-in method builtins.getattr}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+
+
+

@@ -1,0 +1,259 @@
+{
+  "benchmarks": [
+    {
+      "agent_updates_per_second": null,
+      "agents": 1000,
+      "behavior_agents": 0,
+      "best_total_seconds": 0.0008897000006982125,
+      "description": "1,000 idle agents with no every tick block, 1,000 ticks",
+      "median_total_seconds": 0.0008897000006982125,
+      "name": "idle_1k_agents_1k_ticks",
+      "operation_count": 1000000,
+      "operations_per_second": 1123974372.502222,
+      "peak_working_set_bytes": null,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "tick_number": 1000
+          },
+          "operations_per_second": 1123974372.502222,
+          "peak_working_set_bytes": null,
+          "ticks_per_second": 1123974.3725022222,
+          "total_seconds": 0.0008897000006982125,
+          "working_set_after_bytes": null,
+          "working_set_before_bytes": null
+        }
+      ],
+      "ticks": 1000,
+      "ticks_per_second": 1123974.3725022222,
+      "worst_total_seconds": 0.0008897000006982125
+    },
+    {
+      "agent_updates_per_second": null,
+      "agents": 10000,
+      "behavior_agents": 0,
+      "best_total_seconds": 0.00013020000187680125,
+      "description": "10,000 idle agents with no every tick block, 100 ticks",
+      "median_total_seconds": 0.00013020000187680125,
+      "name": "idle_10k_agents_100_ticks",
+      "operation_count": 1000000,
+      "operations_per_second": 7680491440.746882,
+      "peak_working_set_bytes": null,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "tick_number": 100
+          },
+          "operations_per_second": 7680491440.746882,
+          "peak_working_set_bytes": null,
+          "ticks_per_second": 768049.1440746882,
+          "total_seconds": 0.00013020000187680125,
+          "working_set_after_bytes": null,
+          "working_set_before_bytes": null
+        }
+      ],
+      "ticks": 100,
+      "ticks_per_second": 768049.1440746882,
+      "worst_total_seconds": 0.00013020000187680125
+    },
+    {
+      "agent_updates_per_second": 227249.434205652,
+      "agents": 10000,
+      "behavior_agents": 10000,
+      "best_total_seconds": 4.40045100000134,
+      "description": "10,000 agents updating one field every tick, 100 ticks",
+      "median_total_seconds": 4.40045100000134,
+      "name": "field_update_10k_agents_100_ticks",
+      "operation_count": 1000000,
+      "operations_per_second": 227249.434205652,
+      "peak_working_set_bytes": null,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": 227249.434205652,
+          "extra": {
+            "tick_number": 100
+          },
+          "operations_per_second": 227249.434205652,
+          "peak_working_set_bytes": null,
+          "ticks_per_second": 22.7249434205652,
+          "total_seconds": 4.40045100000134,
+          "working_set_after_bytes": null,
+          "working_set_before_bytes": null
+        }
+      ],
+      "ticks": 100,
+      "ticks_per_second": 22.7249434205652,
+      "worst_total_seconds": 4.40045100000134
+    },
+    {
+      "agent_updates_per_second": 67424.29094921082,
+      "agents": 10000,
+      "behavior_agents": 10000,
+      "best_total_seconds": 2.966290000003937,
+      "description": "10,000 grid agents moving every tick, 20 ticks",
+      "median_total_seconds": 2.966290000003937,
+      "name": "grid_move_10k_agents_20_ticks",
+      "operation_count": 200000,
+      "operations_per_second": 67424.29094921082,
+      "peak_working_set_bytes": null,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": 67424.29094921082,
+          "extra": {
+            "tick_number": 20
+          },
+          "operations_per_second": 67424.29094921082,
+          "peak_working_set_bytes": null,
+          "ticks_per_second": 6.742429094921081,
+          "total_seconds": 2.966290000003937,
+          "working_set_after_bytes": null,
+          "working_set_before_bytes": null
+        }
+      ],
+      "ticks": 20,
+      "ticks_per_second": 6.742429094921081,
+      "worst_total_seconds": 2.966290000003937
+    },
+    {
+      "agent_updates_per_second": null,
+      "agents": 20000,
+      "behavior_agents": 0,
+      "best_total_seconds": 0.1975248999951873,
+      "description": "Mass spawning 20,000 grid agents",
+      "median_total_seconds": 0.1975248999951873,
+      "name": "mass_spawn_20k_agents",
+      "operation_count": 20000,
+      "operations_per_second": 101253.05721196315,
+      "peak_working_set_bytes": null,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "tick_number": 0
+          },
+          "operations_per_second": 101253.05721196315,
+          "peak_working_set_bytes": null,
+          "ticks_per_second": null,
+          "total_seconds": 0.1975248999951873,
+          "working_set_after_bytes": null,
+          "working_set_before_bytes": null
+        }
+      ],
+      "ticks": 0,
+      "ticks_per_second": null,
+      "worst_total_seconds": 0.1975248999951873
+    },
+    {
+      "agent_updates_per_second": null,
+      "agents": 20000,
+      "behavior_agents": 0,
+      "best_total_seconds": 0.047897299999021925,
+      "description": "Mass removal of 20,000 already-spawned grid agents",
+      "median_total_seconds": 0.047897299999021925,
+      "name": "mass_remove_20k_agents",
+      "operation_count": 20000,
+      "operations_per_second": 417560.07124427485,
+      "peak_working_set_bytes": null,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "remaining_live_agents": 20000,
+            "start_live_agents": 20000
+          },
+          "operations_per_second": 417560.07124427485,
+          "peak_working_set_bytes": null,
+          "ticks_per_second": null,
+          "total_seconds": 0.047897299999021925,
+          "working_set_after_bytes": null,
+          "working_set_before_bytes": null
+        }
+      ],
+      "ticks": 0,
+      "ticks_per_second": null,
+      "worst_total_seconds": 0.047897299999021925
+    },
+    {
+      "agent_updates_per_second": null,
+      "agents": 10000,
+      "behavior_agents": 0,
+      "best_total_seconds": 0.03028469999844674,
+      "description": "50,000 occupied-cell lookups in a 10,000-agent grid world",
+      "median_total_seconds": 0.03028469999844674,
+      "name": "occupied_cell_lookup_50k",
+      "operation_count": 50000,
+      "operations_per_second": 1650998.6891917184,
+      "peak_working_set_bytes": null,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "hits": 50000,
+            "lookups": 50000
+          },
+          "operations_per_second": 1650998.6891917184,
+          "peak_working_set_bytes": null,
+          "ticks_per_second": null,
+          "total_seconds": 0.03028469999844674,
+          "working_set_after_bytes": null,
+          "working_set_before_bytes": null
+        }
+      ],
+      "ticks": 0,
+      "ticks_per_second": null,
+      "worst_total_seconds": 0.03028469999844674
+    },
+    {
+      "agent_updates_per_second": null,
+      "agents": 10000,
+      "behavior_agents": 0,
+      "best_total_seconds": 0.0014443000036408193,
+      "description": "200 nearby-agent lookups in a 10,000-agent continuous world",
+      "median_total_seconds": 0.0014443000036408193,
+      "name": "nearby_agent_lookup_200",
+      "operation_count": 200,
+      "operations_per_second": 138475.38565106704,
+      "peak_working_set_bytes": null,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "lookups": 200,
+            "total_found": 1490
+          },
+          "operations_per_second": 138475.38565106704,
+          "peak_working_set_bytes": null,
+          "ticks_per_second": null,
+          "total_seconds": 0.0014443000036408193,
+          "working_set_after_bytes": null,
+          "working_set_before_bytes": null
+        }
+      ],
+      "ticks": 0,
+      "ticks_per_second": null,
+      "worst_total_seconds": 0.0014443000036408193
+    }
+  ],
+  "created_at": "2026-08-04T12:14:06.361153+00:00",
+  "machine": {
+    "cpu_count": 8,
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",
+    "python_implementation": "CPython",
+    "python_version": "3.14.3",
+    "release": "11",
+    "system": "Windows",
+    "total_memory_bytes": 16838545408
+  }
+}

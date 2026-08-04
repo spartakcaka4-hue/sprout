@@ -1,0 +1,243 @@
+{
+  "benchmarks": [
+    {
+      "agent_updates_per_second": null,
+      "agents": 1000,
+      "behavior_agents": 0,
+      "best_total_seconds": 1.059293800004525,
+      "description": "1,000 idle agents with no every tick block, 1,000 ticks",
+      "median_total_seconds": 1.059293800004525,
+      "name": "idle_1k_agents_1k_ticks",
+      "operation_count": 1000000,
+      "operations_per_second": 944025.1609097761,
+      "peak_tracemalloc_bytes": 8960,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "tick_number": 1000
+          },
+          "operations_per_second": 944025.1609097761,
+          "peak_tracemalloc_bytes": 8960,
+          "ticks_per_second": 944.0251609097761,
+          "total_seconds": 1.059293800004525
+        }
+      ],
+      "ticks": 1000,
+      "ticks_per_second": 944.0251609097761,
+      "worst_total_seconds": 1.059293800004525
+    },
+    {
+      "agent_updates_per_second": null,
+      "agents": 10000,
+      "behavior_agents": 0,
+      "best_total_seconds": 1.0455841999937547,
+      "description": "10,000 idle agents with no every tick block, 100 ticks",
+      "median_total_seconds": 1.0455841999937547,
+      "name": "idle_10k_agents_100_ticks",
+      "operation_count": 1000000,
+      "operations_per_second": 956403.1285151143,
+      "peak_tracemalloc_bytes": 85120,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "tick_number": 100
+          },
+          "operations_per_second": 956403.1285151143,
+          "peak_tracemalloc_bytes": 85120,
+          "ticks_per_second": 95.64031285151142,
+          "total_seconds": 1.0455841999937547
+        }
+      ],
+      "ticks": 100,
+      "ticks_per_second": 95.64031285151142,
+      "worst_total_seconds": 1.0455841999937547
+    },
+    {
+      "agent_updates_per_second": 72975.26230557743,
+      "agents": 10000,
+      "behavior_agents": 10000,
+      "best_total_seconds": 13.703273799997987,
+      "description": "10,000 agents updating one field every tick, 100 ticks",
+      "median_total_seconds": 13.703273799997987,
+      "name": "field_update_10k_agents_100_ticks",
+      "operation_count": 1000000,
+      "operations_per_second": 72975.26230557743,
+      "peak_tracemalloc_bytes": 325208,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": 72975.26230557743,
+          "extra": {
+            "tick_number": 100
+          },
+          "operations_per_second": 72975.26230557743,
+          "peak_tracemalloc_bytes": 325208,
+          "ticks_per_second": 7.297526230557744,
+          "total_seconds": 13.703273799997987
+        }
+      ],
+      "ticks": 100,
+      "ticks_per_second": 7.297526230557744,
+      "worst_total_seconds": 13.703273799997987
+    },
+    {
+      "agent_updates_per_second": 15689.222237793398,
+      "agents": 10000,
+      "behavior_agents": 10000,
+      "best_total_seconds": 12.747604500000307,
+      "description": "10,000 grid agents moving every tick, 20 ticks",
+      "median_total_seconds": 12.747604500000307,
+      "name": "grid_move_10k_agents_20_ticks",
+      "operation_count": 200000,
+      "operations_per_second": 15689.222237793398,
+      "peak_tracemalloc_bytes": 1970227,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": 15689.222237793398,
+          "extra": {
+            "tick_number": 20
+          },
+          "operations_per_second": 15689.222237793398,
+          "peak_tracemalloc_bytes": 1970227,
+          "ticks_per_second": 1.5689222237793397,
+          "total_seconds": 12.747604500000307
+        }
+      ],
+      "ticks": 20,
+      "ticks_per_second": 1.5689222237793397,
+      "worst_total_seconds": 12.747604500000307
+    },
+    {
+      "agent_updates_per_second": null,
+      "agents": 20000,
+      "behavior_agents": 0,
+      "best_total_seconds": 2.0644866000002366,
+      "description": "Mass spawning 20,000 grid agents",
+      "median_total_seconds": 2.0644866000002366,
+      "name": "mass_spawn_20k_agents",
+      "operation_count": 20000,
+      "operations_per_second": 9687.638563504219,
+      "peak_tracemalloc_bytes": 11516866,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "tick_number": 0
+          },
+          "operations_per_second": 9687.638563504219,
+          "peak_tracemalloc_bytes": 11516866,
+          "ticks_per_second": null,
+          "total_seconds": 2.0644866000002366
+        }
+      ],
+      "ticks": 0,
+      "ticks_per_second": null,
+      "worst_total_seconds": 2.0644866000002366
+    },
+    {
+      "agent_updates_per_second": null,
+      "agents": 20000,
+      "behavior_agents": 0,
+      "best_total_seconds": 0.13380319999851054,
+      "description": "Mass removal of 20,000 already-spawned grid agents",
+      "median_total_seconds": 0.13380319999851054,
+      "name": "mass_remove_20k_agents",
+      "operation_count": 20000,
+      "operations_per_second": 149473.25624665656,
+      "peak_tracemalloc_bytes": 173104,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "remaining_live_agents": 20000,
+            "start_live_agents": 20000
+          },
+          "operations_per_second": 149473.25624665656,
+          "peak_tracemalloc_bytes": 173104,
+          "ticks_per_second": null,
+          "total_seconds": 0.13380319999851054
+        }
+      ],
+      "ticks": 0,
+      "ticks_per_second": null,
+      "worst_total_seconds": 0.13380319999851054
+    },
+    {
+      "agent_updates_per_second": null,
+      "agents": 10000,
+      "behavior_agents": 0,
+      "best_total_seconds": 0.5317097999941325,
+      "description": "100,000 occupied-cell lookups in a 10,000-agent grid world",
+      "median_total_seconds": 0.5317097999941325,
+      "name": "occupied_cell_lookup_100k",
+      "operation_count": 100000,
+      "operations_per_second": 188072.51625060046,
+      "peak_tracemalloc_bytes": 152,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "hits": 100000,
+            "lookups": 100000
+          },
+          "operations_per_second": 188072.51625060046,
+          "peak_tracemalloc_bytes": 152,
+          "ticks_per_second": null,
+          "total_seconds": 0.5317097999941325
+        }
+      ],
+      "ticks": 0,
+      "ticks_per_second": null,
+      "worst_total_seconds": 0.5317097999941325
+    },
+    {
+      "agent_updates_per_second": null,
+      "agents": 10000,
+      "behavior_agents": 0,
+      "best_total_seconds": 13394.7169622,
+      "description": "2,000 nearby-agent lookups in a 10,000-agent continuous world",
+      "median_total_seconds": 13394.7169622,
+      "name": "nearby_agent_lookup_2k",
+      "operation_count": 2000,
+      "operations_per_second": 0.14931259881369768,
+      "peak_tracemalloc_bytes": 456,
+      "repeat": 1,
+      "runs": [
+        {
+          "agent_updates_per_second": null,
+          "extra": {
+            "lookups": 2000,
+            "total_found": 17582
+          },
+          "operations_per_second": 0.14931259881369768,
+          "peak_tracemalloc_bytes": 456,
+          "ticks_per_second": null,
+          "total_seconds": 13394.7169622
+        }
+      ],
+      "ticks": 0,
+      "ticks_per_second": null,
+      "worst_total_seconds": 13394.7169622
+    }
+  ],
+  "created_at": "2026-08-04T08:25:26.084558+00:00",
+  "machine": {
+    "cpu_count": 8,
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 142 Stepping 12, GenuineIntel",
+    "python_implementation": "CPython",
+    "python_version": "3.14.3",
+    "release": "11",
+    "system": "Windows",
+    "total_memory_bytes": 16838545408
+  }
+}

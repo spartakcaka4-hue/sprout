@@ -1,5 +1,8 @@
 include README.md
 include sprout.py
+recursive-include benchmark-results *.json
+recursive-include benchmark-results *.txt
+recursive-include benchmarks *.py
 recursive-include docs *.md
 recursive-include examples *.spr
 recursive-include tests *.py

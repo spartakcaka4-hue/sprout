@@ -105,10 +105,13 @@ class Interpreter:
         self.world_placements: list[WorldPlacementDefinition] = []
         self._next_instance_id = 1
         self._spawn_order: list[AgentInstance] = []
+        self._active_tick_agents: list[AgentInstance] = []
+        self._instances_by_name: dict[str, AgentInstance] = {}
         self._current_instance: AgentInstance | None = None
         self._pending_spawns: list[PendingSpawn] = []
         self._pending_removals: list[AgentInstance] = []
         self._executing_tick_agent = False
+        self._agent_world_compatibility_cache: set[tuple[str, str]] = set()
         self._tick_number = 0
         self._tick_condition = threading.Condition(threading.RLock())
         self._tick_state = "idle"
@@ -272,11 +275,22 @@ class Interpreter:
                 field_declaration.column,
             )
 
+        movement_preset = selected_presets.get("movement", PRESET_GROUPS["movement"]["none"])
+        position_preset = selected_presets.get("position", PRESET_GROUPS["position"]["none"])
+        field_defaults = {
+            field_name: field_definition.default if field_definition.has_default else NOTHING
+            for field_name, field_definition in fields.items()
+        }
+
         self.agents[statement.name] = AgentDefinition(
             statement.name,
             selected_presets,
             fields,
             statement.every_tick_body,
+            field_defaults,
+            movement_preset,
+            position_preset,
+            statement.every_tick_body is not None,
             statement.line,
             statement.column,
         )
@@ -477,22 +491,7 @@ class Interpreter:
                 "Declare the world before spawning agents into it.",
             )
 
-        movement_preset = self._movement_preset_for_agent(agent)
-        self._validate_movement_environment_compatibility(
-            agent,
-            movement_preset,
-            world.environment_type,
-            statement.line,
-            statement.column,
-        )
-        position_preset = self._position_preset_for_agent(agent)
-        self._validate_position_world_compatibility(
-            agent,
-            position_preset,
-            world,
-            statement.line,
-            statement.column,
-        )
+        self._validate_spawn_compatibility(agent, world, statement.line, statement.column)
 
         x_value = self._evaluate(statement.x)
         self._reject_function_value(x_value, statement.x.line, statement.x.column)
@@ -550,8 +549,7 @@ class Interpreter:
         )
 
         fields: dict[str, object] = {}
-        for field_name, field_definition in pending_spawn.agent.fields.items():
-            default = field_definition.default if field_definition.has_default else NOTHING
+        for field_name, default in pending_spawn.agent.field_defaults.items():
             fields[field_name] = clone_value(default)
         for field_name, value in pending_spawn.overrides.items():
             fields[field_name] = clone_value(value)
@@ -563,17 +561,46 @@ class Interpreter:
             pending_spawn.x,
             pending_spawn.y,
             fields,
-            self._movement_preset_for_agent(pending_spawn.agent),
-            self._position_preset_for_agent(pending_spawn.agent),
+            pending_spawn.agent.movement_preset,
+            pending_spawn.agent.position_preset,
             pending_spawn.instance_name,
         )
         self._next_instance_id += 1
         instance.set_position(pending_spawn.x, pending_spawn.y)
         pending_spawn.world.add_agent(instance)
         self._spawn_order.append(instance)
+        if pending_spawn.agent.has_tick_behavior:
+            self._active_tick_agents.append(instance)
         if pending_spawn.instance_name is not None:
+            self._instances_by_name[pending_spawn.instance_name] = instance
             self.globals[pending_spawn.instance_name] = instance
         return instance
+
+    def _validate_spawn_compatibility(
+        self,
+        agent: AgentDefinition,
+        world: WorldRuntime,
+        line: int,
+        column: int,
+    ) -> None:
+        cache_key = (agent.name, world.name)
+        if cache_key in self._agent_world_compatibility_cache:
+            return
+        self._validate_movement_environment_compatibility(
+            agent,
+            agent.movement_preset,
+            world.environment_type,
+            line,
+            column,
+        )
+        self._validate_position_world_compatibility(
+            agent,
+            agent.position_preset,
+            world,
+            line,
+            column,
+        )
+        self._agent_world_compatibility_cache.add(cache_key)
 
     def _validate_spawn_cell_available(
         self,
@@ -597,34 +624,38 @@ class Interpreter:
         )
 
     def _execute_move_statement(self, statement: MoveStatement) -> None:
-        instance = self._resolve_instance_target(statement.target_name, statement.line, statement.column, "move")
+        if statement.target_name == "self" and self._current_instance is not None:
+            instance = self._current_instance
+        else:
+            instance = self._resolve_instance_target(statement.target_name, statement.line, statement.column, "move")
         self._require_active_instance(instance, statement.line, statement.column, "move")
 
-        x_value = self._evaluate(statement.x)
-        self._reject_function_value(x_value, statement.x.line, statement.x.column)
-        y_value = self._evaluate(statement.y)
-        self._reject_function_value(y_value, statement.y.line, statement.y.column)
+        x_value = self._evaluate_movement_operand(statement.x)
+        y_value = self._evaluate_movement_operand(statement.y)
         move_x = self._require_movement_number(x_value, statement.x.line, statement.x.column, "x")
         move_y = self._require_movement_number(y_value, statement.y.line, statement.y.column, "y")
+        world_is_grid = instance.world.definition.space_type == "grid"
 
         if statement.mode == "by":
-            self._require_coordinate_compatible(move_x, instance.world, statement.x.line, statement.x.column, "x delta")
-            self._require_coordinate_compatible(move_y, instance.world, statement.y.line, statement.y.column, "y delta")
+            if world_is_grid:
+                self._require_coordinate_compatible(move_x, instance.world, statement.x.line, statement.x.column, "x delta")
+                self._require_coordinate_compatible(move_y, instance.world, statement.y.line, statement.y.column, "y delta")
             target_x = instance.x + move_x
             target_y = instance.y + move_y
-            action = f"move by ({format_value(move_x)}, {format_value(move_y)})"
         elif statement.mode == "to":
             target_x = move_x
             target_y = move_y
-            action = f"move to ({format_value(target_x)}, {format_value(target_y)})"
+            if world_is_grid:
+                self._require_coordinate_compatible(target_x, instance.world, statement.x.line, statement.x.column, "target x")
+                self._require_coordinate_compatible(target_y, instance.world, statement.y.line, statement.y.column, "target y")
         else:
             raise AssertionError(f"Unhandled move mode: {statement.mode}")
 
-        self._validate_agent_can_move(instance, action, statement.line, statement.column)
-        self._require_coordinate_compatible(target_x, instance.world, statement.x.line, statement.x.column, "target x")
-        self._require_coordinate_compatible(target_y, instance.world, statement.y.line, statement.y.column, "target y")
+        self._validate_agent_can_move(instance, statement.mode, move_x, move_y, statement.line, statement.column)
+        if not world_is_grid:
+            self._require_coordinate_compatible(target_x, instance.world, statement.x.line, statement.x.column, "target x")
+            self._require_coordinate_compatible(target_y, instance.world, statement.y.line, statement.y.column, "target y")
         self._validate_move_bounds(instance, target_x, target_y, statement.line, statement.column)
-        self._validate_runtime_movement_environment(instance, action, statement.line, statement.column)
         self._validate_move_occupancy(instance, target_x, target_y, statement.line, statement.column)
 
         old_x = instance.x
@@ -632,10 +663,21 @@ class Interpreter:
         instance.world.update_agent_position(instance, target_x, target_y)
         instance.record_move(old_x, old_y)
 
+    def _evaluate_movement_operand(self, expression: Expression) -> object:
+        if isinstance(expression, Literal):
+            if expression.literal_type == "nothing":
+                return NOTHING
+            return expression.value
+        value = self._evaluate(expression)
+        self._reject_function_value(value, expression.line, expression.column)
+        return value
+
     def _execute_remove_statement(self, statement: RemoveStatement) -> None:
         instance = self._resolve_instance_target(statement.target_name, statement.line, statement.column, "remove")
         self._require_active_instance(instance, statement.line, statement.column, "remove")
         self._remove_instance(instance)
+        if not self._executing_tick_agent:
+            self._cleanup_removed_instances()
 
     def _resolve_instance_target(
         self,
@@ -653,6 +695,10 @@ class Interpreter:
                     f"Use a named instance when calling `{action}` outside `every tick:`.",
                 )
             return self._current_instance
+
+        named_instance = self._instances_by_name.get(target_name)
+        if named_instance is not None and self.globals.get(target_name) is named_instance:
+            return named_instance
 
         value = self._lookup(target_name, line, column)
         if isinstance(value, AgentInstance):
@@ -708,7 +754,7 @@ class Interpreter:
         column: int,
         label: str,
     ) -> None:
-        if world.space_type != "grid" or value.is_integer():
+        if world.definition.space_type != "grid" or value.is_integer():
             return
         raise SproutRuntimeError(
             line,
@@ -720,7 +766,9 @@ class Interpreter:
     def _validate_agent_can_move(
         self,
         instance: AgentInstance,
-        action: str,
+        move_mode: str,
+        move_x: float,
+        move_y: float,
         line: int,
         column: int,
     ) -> None:
@@ -733,9 +781,16 @@ class Interpreter:
         raise SproutRuntimeError(
             line,
             column,
-            f"Agent instance {instance.error_name} cannot {action}.",
+            f"Agent instance {instance.error_name} cannot {self._format_move_action(move_mode, move_x, move_y)}.",
             f"Its type `{instance.type_name}` uses `{instance.movement_preset.full_name}` in world `{instance.world.name}`. {detail}",
         )
+
+    def _format_move_action(self, move_mode: str, x: float, y: float) -> str:
+        if move_mode == "by":
+            return f"move by ({format_value(x)}, {format_value(y)})"
+        if move_mode == "to":
+            return f"move to ({format_value(x)}, {format_value(y)})"
+        raise AssertionError(f"Unhandled move mode: {move_mode}")
 
     def _validate_move_bounds(
         self,
@@ -746,13 +801,15 @@ class Interpreter:
         column: int,
     ) -> None:
         world = instance.world
-        if 0 <= target_x < world.width and 0 <= target_y < world.height:
+        width = world.definition.width
+        height = world.definition.height
+        if 0 <= target_x < width and 0 <= target_y < height:
             return
         details = [
             f"Moving {instance.error_name} would place it outside world `{world.name}`.",
             f"Target position: ({format_value(target_x)}, {format_value(target_y)}).",
-            f"Valid x range: 0 to less than {world.width}.",
-            f"Valid y range: 0 to less than {world.height}.",
+            f"Valid x range: 0 to less than {width}.",
+            f"Valid y range: 0 to less than {height}.",
         ]
         raise SproutRuntimeError(
             line,
@@ -811,16 +868,10 @@ class Interpreter:
         self._pending_removals = []
 
     def _movement_preset_for_agent(self, agent: AgentDefinition) -> AgentPreset:
-        preset = agent.selected_presets.get("movement")
-        if preset is not None:
-            return preset
-        return PRESET_GROUPS["movement"]["none"]
+        return agent.movement_preset
 
     def _position_preset_for_agent(self, agent: AgentDefinition) -> AgentPreset:
-        preset = agent.selected_presets.get("position")
-        if preset is not None:
-            return preset
-        return PRESET_GROUPS["position"]["none"]
+        return agent.position_preset
 
     def _validate_movement_environment_compatibility(
         self,
@@ -1067,7 +1118,7 @@ class Interpreter:
         self._tick_condition.notify_all()
 
     def _execute_one_complete_tick(self) -> None:
-        tick_agents = [instance for instance in self._spawn_order if instance.active and not instance.removed]
+        tick_agents = [instance for instance in self._active_tick_agents if instance.active and not instance.removed]
         for instance in tick_agents:
             instance.reset_tick_movement()
 
@@ -1084,7 +1135,8 @@ class Interpreter:
             raise
 
         self._apply_pending_spawns()
-        self._cleanup_removed_instances()
+        if self._pending_removals:
+            self._cleanup_removed_instances()
         with self._tick_condition:
             self._tick_number += 1
             self._tick_condition.notify_all()
@@ -1099,7 +1151,8 @@ class Interpreter:
         finally:
             self._current_instance = previous_instance
             self._executing_tick_agent = previous_executing_tick_agent
-            self._cleanup_removed_instances()
+            if self._pending_removals:
+                self._cleanup_removed_instances()
 
     def _apply_pending_spawns(self) -> None:
         if not self._pending_spawns:

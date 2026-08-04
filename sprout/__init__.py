@@ -5,7 +5,7 @@ from .lexer import Lexer
 from .parser import Parser
 
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 
 def run_source(source: str) -> str:
